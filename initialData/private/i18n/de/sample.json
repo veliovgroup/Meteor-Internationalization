@@ -1,0 +1,12 @@
+{
+  "hello": "Hallo",
+  "nested": {
+    "objects": {
+      "might": {
+        "be": {
+          "very": "tief"
+        }
+      }
+    }
+  }
+}

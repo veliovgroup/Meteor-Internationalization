@@ -1,0 +1,16 @@
+{
+  "defaultLocale": "en",
+  "de":{ 
+    "code": "de",
+    "isoCode": "de_DE",
+    "name": "Deutsch",
+    "route": "i18n/de/"
+  },
+
+  "en":{
+    "code": "en",
+    "isoCode": "en_US",
+    "name": "English",
+    "route": "i18n/en/"
+  }
+}
