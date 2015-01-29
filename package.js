@@ -11,6 +11,7 @@ Package.onUse(function(api) {
   api.versionsFrom('1.0.3.1');
   api.use('coffeescript', ['client', 'server']);
   api.use('ostrio:cstorage@0.0.1', 'client');
+  api.use('ostrio:jsextensions@0.0.1', ['client', 'server']);
   api.use('meteorhacks:npm@1.2.2');
   api.addFiles(['ostrio:i18n.coffee', 'ostrio:collection.coffee'], ['client', 'server']);
   api.use('underscore', ['client', 'server']);
@@ -25,7 +26,7 @@ Package.onTest(function(api) {
 });
 
 Npm.depends({
-  fs: '0.0.2',
+  'fs-extra': '0.16.3',
   fibers: '1.0.2'
   // mkdirp: '0.5.0'
 });
