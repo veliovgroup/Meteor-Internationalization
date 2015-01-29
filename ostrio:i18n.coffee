@@ -1,5 +1,3 @@
-i18nInternalizationCollection = new Meteor.Collection("internalization") if !i18nInternalizationCollection
-
 ###
 @namespace i18n
 @description initialize global object
@@ -23,11 +21,12 @@ i18nInternalizationCollection = new Meteor.Collection("internalization") if !i18
   l10n: {}
   config: {}
   localizations: {}
+  internalizationCollection: new Meteor.Collection("internalization")
 
 
 if Meteor.isServer
   fs = Npm.require "fs-extra"
-  Fiber = Npm.require "fibers"
+  # Fiber = Npm.require "fibers"
   
   ###
   @namespace i18n
@@ -53,7 +52,6 @@ if Meteor.isServer
   @property {constructor} internalizationCollection - MongoDB Collection Object
   @constructor
   ###
-  i18n.internalizationCollection = i18nInternalizationCollection
   i18n.internalizationCollection.deny
     insert: ->
       true
@@ -73,11 +71,14 @@ if Meteor.isServer
   @param {string} path - Path to i18n/ folder on server
   ###
   i18n.init = (path) ->
+    console.log "i18n.init"
     i18n.path = removeTrailingSlash(path)
     fillObjectFromDB ->
       defineReactivities ->
-        traverseI18nFiles i18n.path
-        getConfigFile()
+        
+          traverseI18nFiles i18n.path
+          getConfigFile()
+        
 
 
 
@@ -88,6 +89,8 @@ if Meteor.isServer
   @description Run update functions in continuous order
   ###
   onFileChange = (file) ->
+    console.log "onFileChange"
+
     getConfigFile()
     readFile file
 
@@ -101,6 +104,8 @@ if Meteor.isServer
   @param {function} callback - Callback function
   ###
   defineReactivities = (callback) ->
+    console.log "defineReactivities"
+
     i18n.dataTypes.forEach (data) ->
       Object.defineReactiveProperty i18n, data, {}, null, null, ->
         Fiber(->
@@ -119,13 +124,15 @@ if Meteor.isServer
   @param {function} callback - Callback function
   ###
   fillObjectFromDB = (callback) ->
+    console.log "fillObjectFromDB"
+
     i18n.dataTypes.forEach (data) ->
-      Fiber(->
+      
         row = i18n.internalizationCollection.findOne(type: data)
         if row and JSON.stringify(row.value) isnt JSON.stringify(i18n[data])
           i18n[data] = row.value
           i18n[data]._id = row._id
-      ).run()
+      
 
     callback() if callback
 
@@ -139,6 +146,8 @@ if Meteor.isServer
   @param {mix} value - Value to write into MongoDB
   ###
   updateRecords = ->
+    console.log "updateRecords"
+
     i18n.internalizationCollection.upsert
       type: "localizations"
     ,
@@ -163,6 +172,8 @@ if Meteor.isServer
   @callback
   ###
   pathToObj = (path, callback) ->
+    console.log "pathToObj"
+
     path = path.replace(process.env.PWD, "").replace(i18n.storageDir + "/", "")
     path = removeTrailingSlash(path)
     pathArray = path.split("/")
@@ -173,8 +184,10 @@ if Meteor.isServer
       if pathArray[i].indexOf(".") is -1
         unless localI18n[pathArray[i]]
           addProperty localI18n, pathArray[i], (res) ->
-            localI18n = res
-            addProperty localI18n, pathArray[i + 1]  if i + 1 < pathArray.length
+            
+              localI18n = res
+              addProperty localI18n, pathArray[i + 1]  if i + 1 < pathArray.length
+            
 
         else
           localI18n = localI18n[pathArray[i]]
@@ -194,6 +207,8 @@ if Meteor.isServer
   @callback(object)
   ###
   addProperty = (obj, property, callback) ->
+    console.log "addProperty"
+
     property = property.replace(".json", "")
     unless obj[property]
       obj[property] = {}
@@ -213,6 +228,8 @@ if Meteor.isServer
   @param {string} string - String
   ###
   removeTrailingSlash = (string) ->
+    console.log "removeTrailingSlash"
+
     if string.substr(-1) is "/"
       string.substr 0, string.length - 1
     else
@@ -231,25 +248,31 @@ if Meteor.isServer
   @callback(error, object)
   ###
   traverseI18nFiles = (path, callback) ->
+    console.log "traverseI18nFiles"
+
     fs.readdir path, (err, list) ->
-      return callback(err)  if err
-      pending = list.length
-      return callback(null, i18n.localizations)  if not pending and callback
+      
+        return callback(err)  if err
+        pending = list.length
+        return callback(null, i18n.localizations)  if not pending and callback
 
-      list.forEach (file) ->
-        file = path + "/" + file
+        list.forEach (file) ->
+          file = path + "/" + file
 
-        fs.stat file, (err, stat) ->
-          if stat and stat.isDirectory()
-            pathToObj file, ->
-              traverseI18nFiles file, ->
-                callback null, i18n.localizations  if not --pending and callback
-          else
-            if file.indexOf(".json") isnt -1
-              pathToObj file, ->
-                readFile file
+          fs.stat file, (err, stat) ->
+            
+              if stat and stat.isDirectory()
+                pathToObj file, ->
+                  traverseI18nFiles file, ->
+                    callback null, i18n.localizations  if not --pending and callback
+              else
+                if file.indexOf(".json") isnt -1
+                  pathToObj file, ->
+                    readFile file
 
-            callback null, i18n.localizations  if not --pending and callback
+              callback null, i18n.localizations  if not --pending and callback
+            
+      
 
 
   ###
@@ -264,6 +287,8 @@ if Meteor.isServer
   @callback(error, object)
   ###
   readFile = (file, callback) ->
+    console.log "readFile"
+
     localI18n = i18n.localizations
     filenames = file.replace(process.env.PWD, "").replace(i18n.storageDir + "/", "").split("/")
     i = 0
@@ -273,8 +298,10 @@ if Meteor.isServer
         if filenames[i].indexOf(".json") > 1
           watchPathChanges file
           getFile file, filenames, i, localI18n, (data, prop, index, li18n) ->
-            li18n[prop[index].replace(".json", "")] = JSON.parse(data)
-            callback(localI18n) if callback
+            
+              li18n[prop[index].replace(".json", "")] = JSON.parse(data)
+              callback(localI18n) if callback
+            
 
         else
           localI18n = localI18n[filenames[i]]
@@ -295,11 +322,15 @@ if Meteor.isServer
   @callback(data, filenames, index, li18n)
   ###
   getFile = (file, filenames, index, li18n, callback) ->
+    console.log "getFile"
+
     fs.readFile file,
       encoding: "utf8"
     , (err, data) ->
-      throw err  if err
-      callback data, filenames, index, li18n
+      
+        throw err  if err
+        callback data, filenames, index, li18n
+      
 
 
   
@@ -310,13 +341,16 @@ if Meteor.isServer
   store it in variable and set watcher on it
   ###
   getConfigFile = ->
-    console.log 'watchPathChanges', i18n.path + "/i18n.json", i18n
+    console.log "getConfigFile"
+
     watchPathChanges i18n.path + "/i18n.json"
     fs.readFile i18n.path + "/i18n.json",
       encoding: "utf8"
     , (err, data) ->
-      throw err  if err
-      i18n.config = JSON.parse(data)
+      
+        throw err  if err
+        i18n.config = JSON.parse(data)
+      
 
 
   
@@ -330,13 +364,17 @@ if Meteor.isServer
   @param {string} path - Full path to file or folder on server
   ###
   watchPathChanges = (path) ->
+    console.log "watchPathChanges"
+
     unless i18n.files[path]
       i18n.files[path] = {}
       i18n.files[path].onWatch = false
     if i18n.files[path].onWatch is false
       i18n.files[path].onWatch = true
       i18n.files[path].watcher = fs.watch(path, ->
-        onFileChange path
+        
+          onFileChange path
+        
       )
     else
       if i18n.files[path].watcher
@@ -353,6 +391,8 @@ if Meteor.isServer
   @param {string} param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
   ###
   i18n.get = (locale, param) ->
+    console.log "i18n.get"
+
     locale = locale or @defaultLocale
     splitted = param.split '.'
     deepen = (obj, keypath, index=0)->
@@ -366,7 +406,7 @@ if Meteor.isServer
   @description Run i18n.init() function
   with default path to i18n/ folder
   ###
-  i18n.init i18n.path
+  # i18n.init i18n.path
   
 
 
@@ -408,7 +448,7 @@ if Meteor.isClient
   @param {string} locale - Two letter locale code
   ###
   loadLocalizations = (locale) ->
-    i18n.localizations = i18nInternalizationCollection.findOne(type: "localizations").value
+    i18n.localizations = i18n.internalizationCollection.findOne(type: "localizations").value
     reactivateObject i18n.localizations
     i18n.localizations[locale]  if locale
 
@@ -458,7 +498,7 @@ if Meteor.isClient
   @description Load configuration object into i18n.config property
   ###
   loadConfig = ->
-    i18n.config = i18nInternalizationCollection.findOne(type: "config").value
+    i18n.config = i18n.internalizationCollection.findOne(type: "config").value
     i18n.config
 
   

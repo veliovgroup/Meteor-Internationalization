@@ -1,9 +1,10 @@
 Meteor.startup ->
-  i18nInternalizationCollection = new Meteor.Collection "internalization"
+  @i18n = {} if !@i18n
+  i18n.internalizationCollection = new Meteor.Collection "internalization" if !i18n.internalizationCollection
 
 if Meteor.isServer
   Meteor.publish "i18n", ->
-    i18nInternalizationCollection.find
+    i18n.internalizationCollection.find
       type:
         $in: [
           "localizations"

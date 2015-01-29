@@ -13,9 +13,9 @@ Package.onUse(function(api) {
   api.use('ostrio:cstorage@0.0.1', 'client');
   api.use('ostrio:jsextensions@0.0.1', ['client', 'server']);
   api.use('meteorhacks:npm@1.2.2');
-  api.addFiles(['ostrio:i18n.coffee', 'ostrio:collection.coffee'], ['client', 'server']);
   api.use('underscore', ['client', 'server']);
   api.use('session', 'client');
+  api.addFiles(['ostrio:i18n.coffee', 'ostrio:collection.coffee'], ['client', 'server']);
 });
 
 Package.onTest(function(api) {
