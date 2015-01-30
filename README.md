@@ -11,16 +11,19 @@ meteor add ostrio:i18n
 ### Files and Folders structure
 ```
  private/
- ├─ i18n/ //--> Driver's dir
- │  ├── en/ //--> Localization folder with name of country two-letter code
- │  ├─── file.json
- │  ├─── subFolder/ 
- │  |    └── anotherFile.json
- │  ├── en/ //--> Localization folder with name of country two-letter code
- │  ├─── file.json
- │  └─── subFolder/ 
- │       └── anotherFile.json
- └──i18n.json //--> Config file
+ └─ i18n/ //--> Driver's dir
+    |
+    ├── en/ //--> Localization folder with name of country two-letter code
+    |   ├── file.json
+    |   └── subFolder/ 
+    |       └── anotherFile.json
+    |
+    ├── en/ //--> Localization folder with name of country two-letter code
+    |   ├── file.json
+    |   └── subFolder/ 
+    |       └── anotherFile.json
+    |
+    └── i18n.json //--> Config file
 ```
 
 This structure with sample data will be automatically added if file `private/i18n/i18n.json` is not exists
