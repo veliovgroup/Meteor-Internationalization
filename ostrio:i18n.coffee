@@ -22,11 +22,61 @@
   config: {}
   localizations: {}
   internalizationCollection: new Meteor.Collection("internalization")
+  sampleData:
+    de:
+      nestedFolder:
+        support:
+          nested:
+            objects: "zu"
+
+      sample:
+        hello: "Hallo"
+        userHello: "Hallo {{name}}!"
+        fullName: "Vollständige Name des Benutzers ist: {{first}} {{middle}} {{last}}"
+        html: "<b>Fettdruck</b>"
+        nested:
+          objects:
+            might:
+              be:
+                very: "tief"
+
+    en:
+      nestedFolder:
+        support:
+          nested:
+            objects: "too"
+
+      sample:
+        hello: "Hello"
+        userHello: "Hi {{name}}!"
+        fullName: "User's full name is: {{first}} {{middle}} {{last}}"
+        html: "<b>Bold text</b>"
+        nested:
+          objects:
+            might:
+              be:
+                very: "deep"
+
+    i18nConfig:
+      defaultLocale: "en"
+      de:
+        code: "de"
+        isoCode: "de_DE"
+        name: "Deutsch"
+        route: "i18n/de/"
+
+      en:
+        code: "en"
+        isoCode: "en_US"
+        name: "English"
+        route: "i18n/en/"
+
 
 
 if Meteor.isServer
   fs = Npm.require "fs-extra"
-  # Fiber = Npm.require "fibers"
+  bound = Meteor.bindEnvironment (callback) ->
+    callback()
   
   ###
   @namespace i18n
@@ -40,10 +90,20 @@ if Meteor.isServer
   i18n.path = (if (process.env.NODE_ENV is "development") then (process.env.PWD + i18n.storageDir) else (process.env.PWD + i18n.storageDir))
   i18n.files = {}
 
-  if !fs.existsSync i18n.path
-    fs.chmodSync process.env.PWD + '/initialData', 0o0750
-    fs.copySync process.env.PWD + '/initialData', i18n.path
-    fs.chmodSync i18n.path, 0o0750
+  if !fs.existsSync i18n.path + '/i18n.json'
+    fs.mkdirsSync i18n.path + '/de/nested/folder', 0o0750
+    fs.mkdirsSync i18n.path + '/en/nested/folder', 0o0750
+    fs.writeJSONSync i18n.path + '/de/nested/folder/is.json', i18n.sampleData.de.nestedFolder
+    fs.writeJSONSync i18n.path + '/en/nested/folder/is.json', i18n.sampleData.en.nestedFolder
+    fs.writeJSONSync i18n.path + '/de/sample.json', i18n.sampleData.de.sample
+    fs.writeJSONSync i18n.path + '/en/sample.json', i18n.sampleData.en.sample
+    fs.writeJSONSync i18n.path + '/i18n.json', i18n.sampleData.i18nConfig
+
+
+
+    # fs.chmodSync process.env.PWD + '/initialData', 0o0750
+    # fs.copySync process.env.PWD + '/initialData', i18n.path
+    # fs.chmodSync i18n.path, 0o0750
 
 
   
@@ -71,14 +131,11 @@ if Meteor.isServer
   @param {string} path - Path to i18n/ folder on server
   ###
   i18n.init = (path) ->
-    console.log "i18n.init"
     i18n.path = removeTrailingSlash(path)
     fillObjectFromDB ->
       defineReactivities ->
-        
-          traverseI18nFiles i18n.path
-          getConfigFile()
-        
+        traverseI18nFiles i18n.path
+        getConfigFile()
 
 
 
@@ -89,8 +146,6 @@ if Meteor.isServer
   @description Run update functions in continuous order
   ###
   onFileChange = (file) ->
-    console.log "onFileChange"
-
     getConfigFile()
     readFile file
 
@@ -104,14 +159,10 @@ if Meteor.isServer
   @param {function} callback - Callback function
   ###
   defineReactivities = (callback) ->
-    console.log "defineReactivities"
-
     i18n.dataTypes.forEach (data) ->
       Object.defineReactiveProperty i18n, data, {}, null, null, ->
-        Fiber(->
+        bound ->
           updateRecords()
-        ).run()
-
 
     callback() if callback
 
@@ -124,8 +175,6 @@ if Meteor.isServer
   @param {function} callback - Callback function
   ###
   fillObjectFromDB = (callback) ->
-    console.log "fillObjectFromDB"
-
     i18n.dataTypes.forEach (data) ->
       
         row = i18n.internalizationCollection.findOne(type: data)
@@ -146,8 +195,6 @@ if Meteor.isServer
   @param {mix} value - Value to write into MongoDB
   ###
   updateRecords = ->
-    console.log "updateRecords"
-
     i18n.internalizationCollection.upsert
       type: "localizations"
     ,
@@ -172,8 +219,6 @@ if Meteor.isServer
   @callback
   ###
   pathToObj = (path, callback) ->
-    console.log "pathToObj"
-
     path = path.replace(process.env.PWD, "").replace(i18n.storageDir + "/", "")
     path = removeTrailingSlash(path)
     pathArray = path.split("/")
@@ -207,15 +252,12 @@ if Meteor.isServer
   @callback(object)
   ###
   addProperty = (obj, property, callback) ->
-    console.log "addProperty"
-
     property = property.replace(".json", "")
     unless obj[property]
       obj[property] = {}
       Object.defineReactiveProperty obj, property, {}, null, null, ->
-        Fiber(->
+        bound ->
           updateRecords()
-        ).run()
 
     callback(obj[property]) if callback
 
@@ -228,8 +270,6 @@ if Meteor.isServer
   @param {string} string - String
   ###
   removeTrailingSlash = (string) ->
-    console.log "removeTrailingSlash"
-
     if string.substr(-1) is "/"
       string.substr 0, string.length - 1
     else
@@ -248,11 +288,9 @@ if Meteor.isServer
   @callback(error, object)
   ###
   traverseI18nFiles = (path, callback) ->
-    console.log "traverseI18nFiles"
-
     fs.readdir path, (err, list) ->
       
-        return callback(err)  if err
+        return callback(err) if err and callback
         pending = list.length
         return callback(null, i18n.localizations)  if not pending and callback
 
@@ -260,17 +298,16 @@ if Meteor.isServer
           file = path + "/" + file
 
           fs.stat file, (err, stat) ->
-            
-              if stat and stat.isDirectory()
+            if stat and stat.isDirectory()
+              pathToObj file, ->
+                traverseI18nFiles file, ->
+                  callback null, i18n.localizations  if not --pending and callback
+            else
+              if file.indexOf(".json") isnt -1
                 pathToObj file, ->
-                  traverseI18nFiles file, ->
-                    callback null, i18n.localizations  if not --pending and callback
-              else
-                if file.indexOf(".json") isnt -1
-                  pathToObj file, ->
-                    readFile file
+                  readFile file
 
-              callback null, i18n.localizations  if not --pending and callback
+            callback null, i18n.localizations  if not --pending and callback
             
       
 
@@ -287,8 +324,6 @@ if Meteor.isServer
   @callback(error, object)
   ###
   readFile = (file, callback) ->
-    console.log "readFile"
-
     localI18n = i18n.localizations
     filenames = file.replace(process.env.PWD, "").replace(i18n.storageDir + "/", "").split("/")
     i = 0
@@ -298,9 +333,8 @@ if Meteor.isServer
         if filenames[i].indexOf(".json") > 1
           watchPathChanges file
           getFile file, filenames, i, localI18n, (data, prop, index, li18n) ->
-            
-              li18n[prop[index].replace(".json", "")] = JSON.parse(data)
-              callback(localI18n) if callback
+            li18n[prop[index].replace(".json", "")] = JSON.parse(data)
+            callback(localI18n) if callback
             
 
         else
@@ -322,12 +356,9 @@ if Meteor.isServer
   @callback(data, filenames, index, li18n)
   ###
   getFile = (file, filenames, index, li18n, callback) ->
-    console.log "getFile"
-
     fs.readFile file,
       encoding: "utf8"
     , (err, data) ->
-      
         throw err  if err
         callback data, filenames, index, li18n
       
@@ -341,13 +372,10 @@ if Meteor.isServer
   store it in variable and set watcher on it
   ###
   getConfigFile = ->
-    console.log "getConfigFile"
-
     watchPathChanges i18n.path + "/i18n.json"
     fs.readFile i18n.path + "/i18n.json",
       encoding: "utf8"
     , (err, data) ->
-      
         throw err  if err
         i18n.config = JSON.parse(data)
       
@@ -364,18 +392,13 @@ if Meteor.isServer
   @param {string} path - Full path to file or folder on server
   ###
   watchPathChanges = (path) ->
-    console.log "watchPathChanges"
-
     unless i18n.files[path]
       i18n.files[path] = {}
       i18n.files[path].onWatch = false
     if i18n.files[path].onWatch is false
       i18n.files[path].onWatch = true
-      i18n.files[path].watcher = fs.watch(path, ->
-        
-          onFileChange path
-        
-      )
+      i18n.files[path].watcher = fs.watch path, ->
+        onFileChange path
     else
       if i18n.files[path].watcher
         i18n.files[path].watcher.close()
@@ -387,11 +410,12 @@ if Meteor.isServer
   ###
   @function
   @namespace i18n
-  @property {function} get - Get values, and do pattern replaces from current localization
+  @property {function} get     - Get values, and do pattern replaces from current localization
   @param {string} param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
+  @param {mix}     replacements- Object, array, or string of replacements
   ###
-  i18n.get = (locale, param) ->
-    console.log "i18n.get"
+  i18n.get = (locale, param, replacements) ->
+    replacements['hash'] = replacements if replacements
 
     locale = locale or @defaultLocale
     splitted = param.split '.'
@@ -399,14 +423,55 @@ if Meteor.isServer
       key = keypath[index]
       value = obj[key]
       if typeof value is 'object' then deepen value, keypath, index+1 else value
-    deepen i18n.localizations[locale], splitted
+    
+    i18n.l10n[locale + "." + param] = deepen i18n.localizations[locale], splitted
+
+    if replacements and Object::toString.call(replacements) is "[object Object]" or replacements and Object::toString.call(replacements) is "[object String]" or replacements and Object::toString.call(replacements) is "[object Array]"
+
+      postfix = Math.random().toString(36).substring(2)
+      renderString param, replacements, postfix
+      return i18n.l10n[locale + "." + param + postfix]
+      
+    return i18n.l10n[locale + "." + param]
+
+
+  ###
+  @function
+  @name renderString
+  @description Render string - replace Handlebars placeholders by values
+  
+  @param {string}  property        - Name of property in i18n.l10n object
+  @param {mix}     replacements    - Object, array, or string of replacements
+  @param {string}  postfix         - Unique postfix, appended to property string
+  
+  @BUG: Dos not returns values on Live-updates without timeout, but if you go by routes
+  @TODO: Debug bug
+  ###
+  renderString = (property, replacements, postfix) ->
+    _.each i18n.config, (value) ->
+      if Object::toString.call(value) is "[object Object]"
+        rendered = i18n.l10n[value.code + "." + property]
+        if rendered
+          matches = rendered.match(/\{{(.*?)\}}/g)
+          if matches and replacements
+            if Object::toString.call(replacements) is "[object String]"
+              i = matches.length - 1
+              while i >= 0
+                rendered = rendered.replace(matches[i], replacements)
+                i--
+            else
+              i = matches.length - 1
+              while i >= 0
+                rendered = renderReplace(rendered, replacements, matches, i)
+                i--
+          i18n.l10n[value.code + "." + property + postfix] = rendered
 
   
   ###
   @description Run i18n.init() function
   with default path to i18n/ folder
   ###
-  # i18n.init i18n.path
+  i18n.init i18n.path
   
 
 
@@ -421,17 +486,8 @@ if Meteor.isClient
   @example
   {{i18n 'string'}}
   ###
-  if UI
-    UI.registerHelper "i18n", (property, replacements) ->
-      i18n.get property, replacements
-
-  else if Handlebars
-    Handlebars.registerHelper "i18n", (property, replacements) ->
-      i18n.get property, replacements
-
-  else
-    Template.registerHelper "i18n", (property, replacements) ->
-      i18n.get property, replacements
+  Template.registerHelper "i18n", (property, replacements) ->
+    i18n.get property, replacements
   
   ###
   @namespace i18n
@@ -635,40 +691,6 @@ if Meteor.isClient
                 i--
           defineReactiveProperyWrapper i18n.l10n, value.code + "." + property + postfix, rendered
 
-
-  
-  ###
-  @function
-  @name renderReplace
-  @description Smart Handlebars placeholders replacing
-  
-  @param {string}  string          - Name of property in i18n.l10n object
-  @param {mix}     replacements    - Object, array, or string of replacements
-  @param {array}   matches         - Array of all found Handlebars placeholders
-  @param {int}     index           - Current index from matches array
-  ###
-  renderReplace = (string, replacements, matches, index) ->
-    unless replacements.hash[matches[index].replace("{{", "").replace("}}", "").trim()]
-      escapedMatch = matches[index].replace("{{", "").replace("}}", "").trim()
-      if escapedMatch.indexOf(".") isnt -1
-        params = escapedMatch.split(".")
-        replacement = replacements.hash
-        if replacement[params[0]]
-          i = 0
-
-          while i < params.length
-            replacement = replacement[params[i]]
-            i++
-        else
-          replacementCount = 0
-          _.each replacement, (value) ->
-            replacement = value  if index is replacementCount
-            ++replacementCount
-
-        string.replace matches[index], replacement
-    else
-      string.replace matches[index], replacements.hash[matches[index].replace("{{", "").replace("}}", "").trim()]
-
   
   ###
   Subscribe to i18n collection, call i18n.init on connection callback
@@ -676,3 +698,36 @@ if Meteor.isClient
   Meteor.subscribe "i18n", ->
     i18n.isReady = true
     i18n.init @defaultLocale unless i18n.isStarted
+
+
+###
+@function
+@name renderReplace
+@description Smart Handlebars placeholders replacing
+
+@param {string}  string          - Name of property in i18n.l10n object
+@param {mix}     replacements    - Object, array, or string of replacements
+@param {array}   matches         - Array of all found Handlebars placeholders
+@param {int}     index           - Current index from matches array
+###
+renderReplace = (string, replacements, matches, index) ->
+  unless replacements.hash[matches[index].replace("{{", "").replace("}}", "").trim()]
+
+    escapedMatch = matches[index].replace("{{", "").replace("}}", "").trim()
+    if Object::toString.call(replacements) is "[object Array]"
+      string.replace matches[index], replacements[index]
+    else if escapedMatch.indexOf(".") isnt -1
+      params = escapedMatch.split(".")
+      replacement = replacements.hash
+      if replacement[params[0]] and Object::toString.call(replacements) is "[object Object]"
+        i = 0
+        while i < params.length
+          replacement = replacement[params[i]]
+          i++
+        string.replace matches[index], replacement
+
+    else
+      string.replace matches[index], replacements.hash[Object.keys(replacements.hash)[index]]
+
+  else
+    string.replace matches[index], replacements.hash[matches[index].replace("{{", "").replace("}}", "").trim()]
