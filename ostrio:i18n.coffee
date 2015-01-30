@@ -641,7 +641,7 @@ if Meteor.isClient
   @param {mix}     replacements    - Object, array, or string of replacements
   @param {string}  postfix         - Unique postfix, appended to property string
   
-  @BUG: Dos not returns values on Live-updates without timeout, but if you go by routes
+  @BUG: Does not returns values on Live-updates without timeout, but if you go by routes
   @TODO: Debug bug
   ###
   renderString = (property, replacements, postfix) ->
