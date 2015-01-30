@@ -99,13 +99,6 @@ if Meteor.isServer
     fs.writeJSONSync i18n.path + '/en/sample.json', i18n.sampleData.en.sample
     fs.writeJSONSync i18n.path + '/i18n.json', i18n.sampleData.i18nConfig
 
-
-
-    # fs.chmodSync process.env.PWD + '/initialData', 0o0750
-    # fs.copySync process.env.PWD + '/initialData', i18n.path
-    # fs.chmodSync i18n.path, 0o0750
-
-
   
   ###
   @namespace i18n
@@ -127,8 +120,7 @@ if Meteor.isServer
   @function
   @namespace i18n
   @property {function} init - Run core functions continuous order
-  
-  @param {string} path - Path to i18n/ folder on server
+  @param    {string}   path - Path to i18n/ folder on server
   ###
   i18n.init = (path) ->
     i18n.path = removeTrailingSlash(path)
@@ -154,8 +146,7 @@ if Meteor.isServer
   @function
   @name defineReactivities
   @description set defineReactiveProperty() on each
-  property from i18n.dataTypes array
-  
+               property from i18n.dataTypes array
   @param {function} callback - Callback function
   ###
   defineReactivities = (callback) ->
@@ -170,8 +161,7 @@ if Meteor.isServer
   ###
   @function
   @name fillObjectFromDB
-  @description check DB records and fill initial object with it
-  
+  @description check DB records and fill initial object with it  
   @param {function} callback - Callback function
   ###
   fillObjectFromDB = (callback) ->
@@ -181,7 +171,6 @@ if Meteor.isServer
         if row and JSON.stringify(row.value) isnt JSON.stringify(i18n[data])
           i18n[data] = row.value
           i18n[data]._id = row._id
-      
 
     callback() if callback
 
@@ -190,9 +179,8 @@ if Meteor.isServer
   @function
   @name updateRecords
   @description check DB records and fill initial object with it
-  
   @param {object} selector - MongoDB selector object
-  @param {mix} value - Value to write into MongoDB
+  @param {mix}    value    - Value to write into MongoDB
   ###
   updateRecords = ->
     i18n.internalizationCollection.upsert
@@ -213,8 +201,7 @@ if Meteor.isServer
   @function
   @name pathToObj
   @description Parse provided path into nested object
-  
-  @param {string} path - Path to valid destination or file on server
+  @param {string}   path     - Path to valid destination or file on server
   @param {function} callback - Callback function with one parameter - final object prepared from path
   @callback
   ###
@@ -245,9 +232,8 @@ if Meteor.isServer
   @function
   @name addProperty
   @description Create new property and assign empty object to it
-  
-  @param {object} obj - Object we're working with
-  @param {string} property - Name of new property
+  @param {object}   obj      - Object we're working with
+  @param {string}   property - Name of new property
   @param {function} callback - Callback function with one parameter - new empty object
   @callback(object)
   ###
@@ -266,7 +252,6 @@ if Meteor.isServer
   @function
   @name removeTrailingSlash
   @description Removes trailing Slash from string if its exists
-  
   @param {string} string - String
   ###
   removeTrailingSlash = (string) ->
@@ -279,11 +264,9 @@ if Meteor.isServer
   ###
   @function
   @name traverseI18nFiles
-  @description
-  Walk thought all i18n files
-  and store 'em into variable
-  
-  @param {string} path - Path we are working in
+  @description Walk thought all i18n files
+               and store 'em into variable
+  @param {string}   path     - Path we are working in
   @param {function} callback - Callback function with two parameters - error, final object
   @callback(error, object)
   ###
@@ -315,11 +298,9 @@ if Meteor.isServer
   ###
   @function
   @name readFile
-  @description
-  Read file and add it's contents
-  into localI18n variable which linked to i18n.localizations object
-  
-  @param {string} file - Path to existing file
+  @description Read file and add it's contents
+               into localI18n variable which linked to i18n.localizations object
+  @param {string}   file     - Path to existing file
   @param {function} callback - Callback function with one parameter - localI18n - the last object we write to
   @callback(error, object)
   ###
@@ -347,11 +328,10 @@ if Meteor.isServer
   @function
   @name getFile
   @description Read file and callback it's data
-  
-  @param {string} file - Full path to file on server
-  @param {array} filenames - Array of folders names
-  @param {number} index - Index of working directory from Filenames Array
-  @param {object} li18n - Linked object to i18n.localizations property
+  @param {string} file       - Full path to file on server
+  @param {array}  filenames  - Array of folders names
+  @param {number} index      - Index of working directory from Filenames Array
+  @param {object} li18n      - Linked object to i18n.localizations property
   @param {function} callback - Callback function with four parameters - file contents, filenames, index, li18n
   @callback(data, filenames, index, li18n)
   ###
@@ -369,7 +349,7 @@ if Meteor.isServer
   @function
   @name getConfigFile
   @description Read /i18n.json file contents,
-  store it in variable and set watcher on it
+               store it in variable and set watcher on it
   ###
   getConfigFile = ->
     watchPathChanges i18n.path + "/i18n.json"
@@ -386,9 +366,8 @@ if Meteor.isServer
   @function
   @name watchPathChanges
   @description Correctly setting watcher on files or directories
-  If watcher already is set - remove it
-  If watcher is not set - set it and store fs.FSWatcher
-  
+               If watcher already is set - remove it
+               If watcher is not set - set it and store fs.FSWatcher
   @param {string} path - Full path to file or folder on server
   ###
   watchPathChanges = (path) ->
@@ -410,9 +389,10 @@ if Meteor.isServer
   ###
   @function
   @namespace i18n
-  @property {function} get     - Get values, and do pattern replaces from current localization
-  @param {string} param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
-  @param {mix}     replacements- Object, array, or string of replacements
+  @property {function} get          - Get values, and do pattern replaces from current localization
+  @param    {string}   locale       - Two-letter localization code
+  @param    {string}   param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
+  @param    {mix}      replacements - Object, array, or string of replacements
   ###
   i18n.get = (locale, param, replacements) ->
     replacements['hash'] = replacements if replacements
@@ -469,7 +449,7 @@ if Meteor.isServer
   
   ###
   @description Run i18n.init() function
-  with default path to i18n/ folder
+               with default path to i18n/ folder
   ###
   i18n.init i18n.path
   
@@ -481,10 +461,8 @@ CLIENT SIDE      *
 if Meteor.isClient
   
   ###
-  @description i18n helper
-  UI Spacebars helper
-  @example
-  {{i18n 'string'}}
+  @description i18n helper UI Spacebars helper
+  @example {{i18n 'string'}}
   ###
   Template.registerHelper "i18n", (property, replacements) ->
     i18n.get property, replacements
@@ -492,7 +470,7 @@ if Meteor.isClient
   ###
   @namespace i18n
   @property {string} userLocale - User's browser locale
-  Detect user's browser locale
+            Detect user's browser locale
   ###
   i18n.userLocale = (if (Meteor.isClient) then window.navigator.userLanguage or window.navigator.language or navigator.userLanguage else i18n.defaultLocale)
   
@@ -500,7 +478,6 @@ if Meteor.isClient
   @function
   @name loadLocalizations
   @description Load localization files into i18n.localizations property
-  
   @param {string} locale - Two letter locale code
   ###
   loadLocalizations = (locale) ->
@@ -513,8 +490,7 @@ if Meteor.isClient
   @function
   @name reactivateObject
   @description Check if properties of multidimensional object is reactive,
-  if it is not - define reactive property on it
-  
+               if it is not - define reactive property on it
   @param {object} object - Object we're working on
   @param {parent} string - Parent object property
   ###
@@ -532,7 +508,6 @@ if Meteor.isClient
   @function
   @name defineReactiveProperyWrapper
   @description Wrapper for quick Object.defineReactiveProperty() function.
-  
   @param {object}  obj      - Object we're working on
   @param {string}  key      - Property name
   @param {mix}     value    - New property's value
@@ -563,13 +538,12 @@ if Meteor.isClient
   @namespace i18n
   @property {function} setLocale - Set locale (by ISO code)
   @description Set new locale if it is configured in /private/i18n/i18n.json config file.
-  Update session's and localStorage or cookie (via Meteor.storage) dependencies
-  
+               Update session's and localStorage or cookie (via Meteor.storage) dependencies
   @param {string} locale - Two letter locale code
   ###
   i18n.setLocale = (locale) ->
     if i18n.isStarted
-      if i18n.config[locale]
+      if i18n.localizations[locale]
         i18n.currentLocale = locale
         Meteor.storage.set "locale", locale
         Session.set "i18nCurrentLocale", locale
@@ -577,7 +551,7 @@ if Meteor.isClient
           Session.set "i18nCurrentLocale." + key, value  if key isnt "defaultLocale"
 
         i18nConfigArray = []
-        for key of i18n.config
+        for key of i18n.localizations
           i18nConfigArray.push
             name: key
             value: i18n.config[key]
@@ -596,7 +570,6 @@ if Meteor.isClient
   @namespace i18n
   @property {function} init - Set default locale (by ISO code)
   @description Set default locale and initialize internalization service
-  
   @param {string} defaultLocale - Two letter locale code
   ###
   i18n.init = (defaultLocale) ->
@@ -643,10 +616,9 @@ if Meteor.isClient
   ###
   @function
   @namespace i18n
-  @property {function} get - Get values, and do pattern replaces from current localization
-  
-  @param {string} param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
-  @param {mix}    replacements - Object, array, or string of replacements
+  @property {function}  get          - Get values, and do pattern replaces from current localization
+  @param    {string}    param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
+  @param    {mix}       replacements - Object, array, or string of replacements
   ###
   i18n.get = (param, replacements) ->
     if replacements and Object::toString.call(replacements) is "[object Object]" or replacements and Object::toString.call(replacements) is "[object String]" or replacements and Object::toString.call(replacements) is "[object Array]"

@@ -3,7 +3,7 @@ Package.describe({
   summary: 'i18n and l10n package built with usage of meteor collections, '+
            'with both server- and client-side support',
   version: '1.0.0',
-  git: '',
+  git: 'https://github.com/VeliovGroup/Meteor-Internationalization',
   documentation: 'README.md'
 });
 
