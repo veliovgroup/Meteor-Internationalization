@@ -14,6 +14,14 @@ if(Meteor.isClient){
   //   test.expect_fail();
   // });
 
+  Tinytest.add('get() non-existent key', function (test) {
+    i18n.setLocale('en');
+    test.equal(i18n.get('samle.hell'), '');
+
+    i18n.setLocale('de');
+    test.equal(i18n.get('samle.hell'), '');
+  });
+
   Tinytest.add('get()', function (test) {
     i18n.setLocale('en');
     test.equal(i18n.get('sample.hello'), 'Hello');
@@ -83,5 +91,10 @@ if(Meteor.isServer){
     test.equal(i18n.get('en', 'sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'User\'s full name is: Michael A. Macht');
 
     test.equal(i18n.get('de', 'sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'Vollständige Name des Benutzers ist: Michael A. Macht');
+  });
+
+  Tinytest.add('get() non-existent key', function (test) {
+    test.equal(i18n.get('en', 'samle.hell'), '');
+    test.equal(i18n.get('en', 'samle.hell'), '');
   });
 }

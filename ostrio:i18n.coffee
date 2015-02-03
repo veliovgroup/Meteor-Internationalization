@@ -400,9 +400,15 @@ if Meteor.isServer
     locale = locale or @defaultLocale
     splitted = param.split '.'
     deepen = (obj, keypath, index=0)->
-      key = keypath[index]
-      value = obj[key]
-      if typeof value is 'object' then deepen value, keypath, index+1 else value
+      if keypath[index]
+        key = keypath[index]
+        if obj[key]
+          value = obj[key]
+          if typeof value is 'object' then deepen value, keypath, index+1 else value
+        else
+          ''
+      else
+        ''
     
     i18n.l10n[locale + "." + param] = deepen i18n.localizations[locale], splitted
 
