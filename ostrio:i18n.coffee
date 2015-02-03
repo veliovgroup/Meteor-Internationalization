@@ -358,7 +358,8 @@ if Meteor.isServer
     , (err, data) ->
         throw err  if err
         i18n.config = JSON.parse(data)
-      
+        i18n.isStarted = true
+        i18n.isReady = true
 
 
   
@@ -394,32 +395,44 @@ if Meteor.isServer
   @param    {string}   param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
   @param    {mix}      replacements - Object, array, or string of replacements
   ###
-  i18n.get = (locale, param, replacements) ->
-    replacements['hash'] = replacements if replacements
+  i18n.get = (locale, param, replacements, cb) ->
+    if i18n.isReady and i18n.isStarted
 
-    locale = locale or @defaultLocale
-    splitted = param.split '.'
-    deepen = (obj, keypath, index=0)->
-      if keypath[index]
-        key = keypath[index]
-        if obj[key]
-          value = obj[key]
-          if typeof value is 'object' then deepen value, keypath, index+1 else value
+      replacements['hash'] = replacements if replacements
+
+      locale = locale or @defaultLocale
+      splitted = param.split '.'
+      deepen = (obj, keypath, index=0)->
+        if obj && keypath[index]
+          key = keypath[index]
+          if obj[key]
+            value = obj[key]
+            if typeof value is 'object' then deepen value, keypath, index+1 else value
+          else
+            ''
         else
           ''
-      else
-        ''
-    
-    i18n.l10n[locale + "." + param] = deepen i18n.localizations[locale], splitted
 
-    if replacements and Object::toString.call(replacements) is "[object Object]" or replacements and Object::toString.call(replacements) is "[object String]" or replacements and Object::toString.call(replacements) is "[object Array]"
+      i18n.l10n[locale + "." + param] = deepen i18n.localizations[locale], splitted
 
-      postfix = Math.random().toString(36).substring(2)
-      renderString param, replacements, postfix
-      return i18n.l10n[locale + "." + param + postfix]
+      if replacements and Object::toString.call(replacements) is "[object Object]" or replacements and Object::toString.call(replacements) is "[object String]" or replacements and Object::toString.call(replacements) is "[object Array]"
+
+        postfix = Math.random().toString(36).substring(2)
+        renderString param, replacements, postfix
+        return i18n.l10n[locale + "." + param + postfix]
       
-    return i18n.l10n[locale + "." + param]
+      cb and cb null, true
+      return i18n.l10n[locale + "." + param]
 
+    else unless i18n.isReady
+      ticker = ''
+      Meteor.wrapAsync((params, cb)->
+        ticker = Meteor.setTimeout (->
+          i18n.get params.locale, params.param, params.replacements, cb
+          Meteor.clearInterval ticker
+        ), 250
+      )({locale: locale, param:param, replacements:replacements})
+      return i18n.l10n[locale + "." + param]
 
   ###
   @function
