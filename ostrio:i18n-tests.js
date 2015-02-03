@@ -22,6 +22,14 @@ if(Meteor.isClient){
     test.equal(i18n.get('sample.hello'), 'Hallo');
   });
 
+  Tinytest.add('get(locale, param) [different lang than current locale]', function (test) {
+    i18n.setLocale('en');
+    test.equal(i18n.get('de', 'sample.hello'), 'Hallo');
+
+    i18n.setLocale('de');
+    test.equal(i18n.get('en', 'sample.hello'), 'Hello');
+  });
+
   Tinytest.add('get() from nested folder', function (test) {
     i18n.setLocale('en');
     test.equal(i18n.get('nested.folder.is.support.nested.objects'), 'too');

@@ -617,18 +617,26 @@ if Meteor.isClient
   @function
   @namespace i18n
   @property {function}  get          - Get values, and do pattern replaces from current localization
+  @param    {string}    locale       - [OPTIONAL] Two-letter localization code
   @param    {string}    param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
   @param    {mix}       replacements - Object, array, or string of replacements
   ###
-  i18n.get = (param, replacements) ->
+  i18n.get = (locale, param, replacements) ->
+    if arguments.length < 3 and locale.length isnt 2 and locale.indexOf('.') isnt -1
+      if _.isString(param) or _.isObject(param)
+        replacements = if _.isObject param then param else param.clone(true) 
+      if _.isString(locale)
+        param = locale.clone(true)
+      locale = Session.get "i18nCurrentLocale"
+
     if replacements and Object::toString.call(replacements) is "[object Object]" or replacements and Object::toString.call(replacements) is "[object String]" or replacements and Object::toString.call(replacements) is "[object Array]"
 
       replacements.hash = replacements if !replacements.hash
       postfix = if replacements and _.isString(replacements) or replacements and replacements.hash  and not _.isEmpty(replacements.hash) then "-" + Math.random().toString(36).substring(2) else ''
       renderString param, replacements, postfix
-      Session.get Session.get("i18nCurrentLocale") + "." + param + postfix
+      Session.get locale + "." + param + postfix
     else
-      tmp = Session.get(Session.get("i18nCurrentLocale") + "." + param)
+      tmp = Session.get locale + "." + param
       (if (tmp) then tmp else (if (param.indexOf(".") isnt -1) then "" else param))
 
   

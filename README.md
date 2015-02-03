@@ -35,10 +35,11 @@ This structure with sample data will be automatically added if file `private/i18
  * @function
  * @namespace i18n
  * @property {function} get          - Get values, and do pattern replaces from current localization
+ * @param    {string}   locale       - [OPTIONAL] Two-letter localization code
  * @param    {string}   param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
  * @param    {mix}      replacements - Object, array, or string of replacements
  */
-i18n.get(param, replacements)
+i18n.get(locale, param, replacements)
 ```
 
 #### `setLocale()` method
@@ -62,6 +63,11 @@ i18n.setLocale('en');
 #### Get value by key
 ```javascript
 i18n.get('sample.hello');
+```
+
+#### Get value by key in different locale than current
+```javascript
+i18n.get('de', 'sample.hello');
 ```
 
 #### Get value by key with single placeholder
@@ -126,7 +132,7 @@ i18n.localizations;
  * @param    {string}   param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
  * @param    {mix}      replacements - Object, array, or string of replacements
  */
-i18n.get(loacale, param, replacements)
+i18n.get(locale, param, replacements)
 ```
 
 #### Get value by key
