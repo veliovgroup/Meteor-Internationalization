@@ -438,7 +438,7 @@ if Meteor.isServer
           Meteor.clearInterval ticker
         ), 250
       )({locale: locale, param:param, replacements:replacements})
-      return i18n.l10n["#{locale}.#{param}#{postfix}"]
+      return i18n.l10n["#{locale}.#{param}"]
 
   ###
   @function
