@@ -16,10 +16,10 @@ if(Meteor.isClient){
 
   Tinytest.add('get() non-existent key', function (test) {
     i18n.setLocale('en');
-    test.equal(i18n.get('samle.hell'), '');
+    test.equal(i18n.get('de', 'samle.hell', ['o', 'b']), 'samle.hell');
 
     i18n.setLocale('de');
-    test.equal(i18n.get('samle.hell'), '');
+    test.equal(i18n.get('samle.hell'), 'samle.hell');
   });
 
   Tinytest.add('get()', function (test) {
@@ -72,6 +72,14 @@ if(Meteor.isClient){
 }
 
 if(Meteor.isServer){
+  Tinytest.add('get() without locale', function (test) {
+    test.equal(i18n.get('sample.hell'), 'sample.hell');
+    test.equal(i18n.get('sample.hello'), 'Hello');
+    test.equal(i18n.get('sample.userHello', 'ostrio'), 'Hi ostrio!');
+    test.equal(i18n.get('sample.fullName', ['Michael', 'A.', 'Macht']), 'User\'s full name is: Michael A. Macht');
+    test.equal(i18n.get('sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'User\'s full name is: Michael A. Macht');
+  });
+
   Tinytest.add('get() with placeholder', function (test) {
     test.equal(i18n.get('en', 'sample.userHello', 'ostrio'), 'Hi ostrio!');
     test.equal(i18n.get('de', 'sample.userHello', 'ostrio'), 'Hallo ostrio!');
@@ -94,7 +102,7 @@ if(Meteor.isServer){
   });
 
   Tinytest.add('get() non-existent key', function (test) {
-    test.equal(i18n.get('en', 'samle.hell'), '');
-    test.equal(i18n.get('en', 'samle.hell'), '');
+    test.equal(i18n.get('en', 'samle.hell'), 'samle.hell');
+    test.equal(i18n.get('de', 'samle.hell'), 'samle.hell');
   });
 }

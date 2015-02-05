@@ -16,6 +16,8 @@
   ###
   defaultLocale: "en"
   currentLocale:  "en"
+  onWrongKey:
+    returnKey: true
   isReady: false
   isStarted: false
   l10n: {}
@@ -90,14 +92,14 @@ if Meteor.isServer
   i18n.path = (if (process.env.NODE_ENV is "development") then (process.env.PWD + i18n.storageDir) else (process.env.PWD + i18n.storageDir))
   i18n.files = {}
 
-  if !fs.existsSync i18n.path + '/i18n.json'
-    fs.mkdirsSync i18n.path + '/de/nested/folder', 0o0750
-    fs.mkdirsSync i18n.path + '/en/nested/folder', 0o0750
-    fs.writeJSONSync i18n.path + '/de/nested/folder/is.json', i18n.sampleData.de.nestedFolder
-    fs.writeJSONSync i18n.path + '/en/nested/folder/is.json', i18n.sampleData.en.nestedFolder
-    fs.writeJSONSync i18n.path + '/de/sample.json', i18n.sampleData.de.sample
-    fs.writeJSONSync i18n.path + '/en/sample.json', i18n.sampleData.en.sample
-    fs.writeJSONSync i18n.path + '/i18n.json', i18n.sampleData.i18nConfig
+  if !fs.existsSync "#{i18n.path}/i18n.json"
+    fs.mkdirsSync "#{i18n.path}/de/nested/folder", 0o0750
+    fs.mkdirsSync "#{i18n.path}/en/nested/folder", 0o0750
+    fs.writeJSONSync "#{i18n.path}/de/nested/folder/is.json", i18n.sampleData.de.nestedFolder
+    fs.writeJSONSync "#{i18n.path}/en/nested/folder/is.json", i18n.sampleData.en.nestedFolder
+    fs.writeJSONSync "#{i18n.path}/de/sample.json", i18n.sampleData.de.sample
+    fs.writeJSONSync "#{i18n.path}/en/sample.json", i18n.sampleData.en.sample
+    fs.writeJSONSync "#{i18n.path}/i18n.json", i18n.sampleData.i18nConfig
 
   
   ###
@@ -166,11 +168,10 @@ if Meteor.isServer
   ###
   fillObjectFromDB = (callback) ->
     i18n.dataTypes.forEach (data) ->
-      
-        row = i18n.internalizationCollection.findOne(type: data)
-        if row and JSON.stringify(row.value) isnt JSON.stringify(i18n[data])
-          i18n[data] = row.value
-          i18n[data]._id = row._id
+      row = i18n.internalizationCollection.findOne(type: data)
+      if row and JSON.stringify(row.value) isnt JSON.stringify(i18n[data])
+        i18n[data] = row.value
+        i18n[data]._id = row._id
 
     callback() if callback
 
@@ -206,7 +207,7 @@ if Meteor.isServer
   @callback
   ###
   pathToObj = (path, callback) ->
-    path = path.replace(process.env.PWD, "").replace(i18n.storageDir + "/", "")
+    path = path.replace(process.env.PWD, "").replace("#{i18n.storageDir}/", "")
     path = removeTrailingSlash(path)
     pathArray = path.split("/")
     localI18n = i18n.localizations
@@ -216,11 +217,9 @@ if Meteor.isServer
       if pathArray[i].indexOf(".") is -1
         unless localI18n[pathArray[i]]
           addProperty localI18n, pathArray[i], (res) ->
-            
-              localI18n = res
-              addProperty localI18n, pathArray[i + 1]  if i + 1 < pathArray.length
-            
-
+            localI18n = res
+            addProperty localI18n, pathArray[i + 1]  if i + 1 < pathArray.length
+          
         else
           localI18n = localI18n[pathArray[i]]
           addProperty localI18n, pathArray[i + 1]  if i + 1 < pathArray.length
@@ -278,7 +277,7 @@ if Meteor.isServer
         return callback(null, i18n.localizations)  if not pending and callback
 
         list.forEach (file) ->
-          file = path + "/" + file
+          file = "#{path}/#{file}"
 
           fs.stat file, (err, stat) ->
             if stat and stat.isDirectory()
@@ -306,7 +305,7 @@ if Meteor.isServer
   ###
   readFile = (file, callback) ->
     localI18n = i18n.localizations
-    filenames = file.replace(process.env.PWD, "").replace(i18n.storageDir + "/", "").split("/")
+    filenames = file.replace(process.env.PWD, "").replace("#{i18n.storageDir}/", "").split("/")
     i = 0
 
     while i < filenames.length
@@ -352,8 +351,8 @@ if Meteor.isServer
                store it in variable and set watcher on it
   ###
   getConfigFile = ->
-    watchPathChanges i18n.path + "/i18n.json"
-    fs.readFile i18n.path + "/i18n.json",
+    watchPathChanges "#{i18n.path}/i18n.json"
+    fs.readFile "#{i18n.path}/i18n.json",
       encoding: "utf8"
     , (err, data) ->
         throw err  if err
@@ -397,6 +396,12 @@ if Meteor.isServer
   ###
   i18n.get = (locale, param, replacements, cb) ->
     if i18n.isReady and i18n.isStarted
+      if arguments.length < 3 and locale.length isnt 2 and locale.indexOf('.') isnt -1
+        if _.isString(param) or _.isObject(param)
+          replacements = if _.isObject param then param else param.clone()
+        if _.isString locale 
+          param = locale.clone() 
+        locale = @currentLocale || @defaultLocale
 
       replacements['hash'] = replacements if replacements
 
@@ -407,22 +412,23 @@ if Meteor.isServer
           key = keypath[index]
           if obj[key]
             value = obj[key]
-            if typeof value is 'object' then deepen value, keypath, index+1 else value
+            if typeof value is 'object' then deepen value, keypath, index + 1 else value
           else
-            ''
+            return if i18n.onWrongKey.returnKey then param else ""
         else
-          ''
+           return if i18n.onWrongKey.returnKey then param else ""
 
-      i18n.l10n[locale + "." + param] = deepen i18n.localizations[locale], splitted
+      i18n.l10n["#{locale}.#{param}"] = deepen i18n.localizations[locale], splitted
 
       if replacements and Object::toString.call(replacements) is "[object Object]" or replacements and Object::toString.call(replacements) is "[object String]" or replacements and Object::toString.call(replacements) is "[object Array]"
 
         postfix = Math.random().toString(36).substring(2)
         renderString param, replacements, postfix
-        return i18n.l10n[locale + "." + param + postfix]
+        cb and cb null, true
+        return i18n.l10n["#{locale}.#{param}#{postfix}"]
       
       cb and cb null, true
-      return i18n.l10n[locale + "." + param]
+      return i18n.l10n["#{locale}.#{param}"]
 
     else unless i18n.isReady
       ticker = ''
@@ -432,7 +438,7 @@ if Meteor.isServer
           Meteor.clearInterval ticker
         ), 250
       )({locale: locale, param:param, replacements:replacements})
-      return i18n.l10n[locale + "." + param]
+      return i18n.l10n["#{locale}.#{param}#{postfix}"]
 
   ###
   @function
@@ -449,7 +455,7 @@ if Meteor.isServer
   renderString = (property, replacements, postfix) ->
     _.each i18n.config, (value) ->
       if Object::toString.call(value) is "[object Object]"
-        rendered = i18n.l10n[value.code + "." + property]
+        rendered = i18n.l10n["#{value.code}.#{property}"]
         if rendered
           matches = rendered.match(/\{{(.*?)\}}/g)
           if matches and replacements
@@ -463,7 +469,7 @@ if Meteor.isServer
               while i >= 0
                 rendered = renderReplace(rendered, replacements, matches, i)
                 i--
-          i18n.l10n[value.code + "." + property + postfix] = rendered
+          i18n.l10n["#{value.code}.#{property}#{postfix}"] = rendered
 
   
   ###
@@ -475,7 +481,7 @@ if Meteor.isServer
 
 
 ###
-CLIENT SIDE      *
+# CLIENT SIDE
 ###
 if Meteor.isClient
   
@@ -567,7 +573,7 @@ if Meteor.isClient
         Meteor.storage.set "locale", locale
         Session.set "i18nCurrentLocale", locale
         _.each i18n.config[locale], (value, key) ->
-          Session.set "i18nCurrentLocale." + key, value  if key isnt "defaultLocale"
+          Session.set "i18nCurrentLocale.#{key}", value  if key isnt "defaultLocale"
 
         i18nConfigArray = []
         for key of i18n.localizations
@@ -643,19 +649,22 @@ if Meteor.isClient
   i18n.get = (locale, param, replacements) ->
     if arguments.length < 3 and locale.length isnt 2 and locale.indexOf('.') isnt -1
       if _.isString(param) or _.isObject(param)
-        replacements = if _.isObject param then param else param.clone(true) 
-      if _.isString(locale)
-        param = locale.clone(true)
+        replacements = if _.isObject param then param else param.clone()
+      if _.isString locale 
+        param = locale.clone() 
       locale = Session.get "i18nCurrentLocale"
 
-    if replacements and Object::toString.call(replacements) is "[object Object]" or replacements and Object::toString.call(replacements) is "[object String]" or replacements and Object::toString.call(replacements) is "[object Array]"
+    if !Session.get "#{locale}.#{param}"
+      return if @onWrongKey.returnKey then param else ""
 
-      replacements.hash = replacements if !replacements.hash
-      postfix = if replacements and _.isString(replacements) or replacements and replacements.hash  and not _.isEmpty(replacements.hash) then "-" + Math.random().toString(36).substring(2) else ''
+    else if replacements and Object::toString.call(replacements) is "[object Object]" or replacements and Object::toString.call(replacements) is "[object String]" or replacements and Object::toString.call(replacements) is "[object Array]"
+
+      replacements.hash ?= replacements
+      postfix = if replacements and _.isString(replacements) or replacements and replacements.hash and not _.isEmpty(replacements.hash) then "-" + Math.random().toString(36).substring(2) else ''
       renderString param, replacements, postfix
-      Session.get locale + "." + param + postfix
+      Session.get "#{locale}.#{param}#{postfix}"
     else
-      tmp = Session.get locale + "." + param
+      tmp = Session.get "#{locale}.#{param}"
       (if (tmp) then tmp else (if (param.indexOf(".") isnt -1) then "" else param))
 
   
@@ -674,7 +683,7 @@ if Meteor.isClient
   renderString = (property, replacements, postfix) ->
     _.each i18n.config, (value) ->
       if Object::toString.call(value) is "[object Object]"
-        rendered = i18n.l10n[value.code + "." + property]
+        rendered = i18n.l10n["#{value.code}.#{property}"]
         if rendered
           matches = rendered.match(/\{{(.*?)\}}/g)
           if matches and replacements
@@ -688,11 +697,11 @@ if Meteor.isClient
               while i >= 0
                 rendered = renderReplace(rendered, replacements, matches, i)
                 i--
-          defineReactiveProperyWrapper i18n.l10n, value.code + "." + property + postfix, rendered
+          defineReactiveProperyWrapper i18n.l10n, "#{value.code}.#{property}#{postfix}", rendered
 
   
   ###
-  Subscribe to i18n collection, call i18n.init on connection callback
+  @description Subscribe to i18n collection, call i18n.init on connection callback
   ###
   Meteor.subscribe "i18n", ->
     i18n.isReady = true
@@ -711,7 +720,6 @@ if Meteor.isClient
 ###
 renderReplace = (string, replacements, matches, index) ->
   unless replacements.hash[matches[index].replace("{{", "").replace("}}", "").trim()]
-
     escapedMatch = matches[index].replace("{{", "").replace("}}", "").trim()
     if Object::toString.call(replacements) is "[object Array]"
       string.replace matches[index], replacements[index]
@@ -724,9 +732,7 @@ renderReplace = (string, replacements, matches, index) ->
           replacement = replacement[params[i]]
           i++
         string.replace matches[index], replacement
-
     else
       string.replace matches[index], replacements.hash[Object.keys(replacements.hash)[index]]
-
   else
     string.replace matches[index], replacements.hash[matches[index].replace("{{", "").replace("}}", "").trim()]

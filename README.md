@@ -28,7 +28,18 @@ meteor add ostrio:i18n
 
 This structure with sample data will be automatically added if file `private/i18n/i18n.json` is not exists
 
-### Client usage
+Settings
+========
+#### Return key for non-existent key
+```javascript
+i18n.onWrongKey.returnKey = true;
+i18n.get('nonExistentKey'); // returns key: "nonExistentKey"
+i18n.onWrongKey.returnKey = false;
+i18n.get('nonExistentKey'); // returns empty string: ""
+```
+
+Client usage
+========
 #### `get()` method
 ```javascript
 /*
@@ -119,8 +130,9 @@ i18n.defaultLocale;
 i18n.localizations;
 ```
 
-### Server usage
-*Note: * Server has no `setLocale()` method
+Server usage
+========
+__Note:__ Server has no `setLocale()` method
 
 #### `get()` method
 ```javascript
@@ -133,6 +145,12 @@ i18n.localizations;
  * @param    {mix}      replacements - Object, array, or string of replacements
  */
 i18n.get(locale, param, replacements)
+```
+
+#### Get value in default language by key
+```javascript
+i18n.get('sample.hello');
+i18n.get('sample.userHello', 'Michael');
 ```
 
 #### Get value by key
@@ -173,7 +191,6 @@ p {{{i18n 'sample.html'}}}
 p {{i18n 'sample.fullName'}}
 p {{i18n 'sample.fullName' first='Michael' middle='A.' last='Macht'}}
 p {{i18n 'sample.fullName' first='Michael' middle='A.' third='Macht'}}
-p {{i18n 'sample.fullName' 'Michael' 'A.' 'Macht'}}
 ```
 
 
