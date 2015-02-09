@@ -1,7 +1,7 @@
 Package.describe({
   name: 'ostrio:i18n',
   summary: 'File based and reactive i18n isomorphic driver for Meteor with support of placeholders.',
-  version: '1.1.4',
+  version: '1.1.5',
   git: 'https://github.com/VeliovGroup/Meteor-Internationalization',
   documentation: 'README.md'
 });
@@ -10,7 +10,7 @@ Package.onUse(function(api) {
   api.versionsFrom('1.0.3.1');
   api.use('coffeescript', ['client', 'server']);
   api.use('ostrio:cstorage@0.0.2', 'client');
-  api.use('ostrio:jsextensions@0.0.1', ['client', 'server']);
+  api.use('ostrio:jsextensions@0.0.4', ['client', 'server']);
   api.use('meteorhacks:npm@1.2.2');
   api.use('templating', 'client');
   api.use('underscore', ['client', 'server']);
