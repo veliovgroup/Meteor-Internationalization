@@ -89,7 +89,7 @@ if Meteor.isServer
   ###
   i18n.dataTypes = [ "localizations", "config" ]
   i18n.storageDir = (if (process.env.NODE_ENV is "development") then "/private/i18n" else "/builded/bundle/programs/server/assets/app/i18n")
-  i18n.path = (if (process.env.NODE_ENV is "development") then (process.env.PWD + i18n.storageDir) else (process.env.PWD + i18n.storageDir))
+  i18n.path = process.env.PWD + i18n.storageDir
   i18n.files = {}
 
   if !fs.existsSync "#{i18n.path}/i18n.json"
@@ -453,9 +453,9 @@ if Meteor.isServer
   @TODO: Debug bug
   ###
   renderString = (property, replacements, postfix) ->
-    _.each i18n.config, (value) ->
-      if Object::toString.call(value) is "[object Object]"
-        rendered = i18n.l10n["#{value.code}.#{property}"]
+    for key of i18n.config
+      if Object::toString.call(i18n.config[key]) is "[object Object]"
+        rendered = i18n.l10n["#{i18n.config[key].code}.#{property}"]
         if rendered
           matches = rendered.match(/\{{(.*?)\}}/g)
           if matches and replacements
@@ -469,7 +469,7 @@ if Meteor.isServer
               while i >= 0
                 rendered = renderReplace(rendered, replacements, matches, i)
                 i--
-          i18n.l10n["#{value.code}.#{property}#{postfix}"] = rendered
+          i18n.l10n["#{i18n.config[key].code}.#{property}#{postfix}"] = rendered
 
   
   ###
@@ -572,21 +572,20 @@ if Meteor.isClient
         i18n.currentLocale = locale
         Meteor.storage.set "locale", locale
         Session.set "i18nCurrentLocale", locale
-        _.each i18n.config[locale], (value, key) ->
-          Session.set "i18nCurrentLocale.#{key}", value  if key isnt "defaultLocale"
-
         i18nConfigArray = []
         for key of i18n.localizations
           i18nConfigArray.push
             name: key
             value: i18n.config[key]
-            currentLocale: Session.get("i18nCurrentLocale")
-
+            currentLocale: Session.get "i18nCurrentLocale"
         Session.set "i18nConfig", i18nConfigArray
+      else if i18n.localizations[i18n.config.defaultLocale]
+        i18n.setLocale i18n.config.defaultLocale
       else
         throwError 404, locale
     else
       i18n.init locale
+
     i18n.currentLocale
 
   
@@ -602,12 +601,14 @@ if Meteor.isClient
       userLocale = i18n.userLocale.split("-")[0]
       loadConfig()
       loadLocalizations()
+
       if defaultLocale and i18n.config[defaultLocale]
         i18n.defaultLocale = defaultLocale
       else if i18n.config.defaultLocale
         i18n.defaultLocale = i18n.config.defaultLocale
       else
         throwError 404, defaultLocale
+
       Meteor.storage.set "locale", (if (Meteor.storage.get("locale")) then Meteor.storage.get("locale") else (if (i18n.config[userLocale]) then userLocale else i18n.defaultLocale))
       i18n.isStarted = true
       i18n.setLocale Meteor.storage.get("locale")
@@ -626,8 +627,6 @@ if Meteor.isClient
   @param {string}      string  - Additional string to be inserted into error messages
   ###
   throwError = (code, string) ->
-    text = undefined
-    description = undefined
     switch code
       when 404
         text = "No locale \"#{string}\" is definded in /private/i18n/i18n.json config file"
@@ -681,9 +680,9 @@ if Meteor.isClient
   @TODO: Debug bug
   ###
   renderString = (property, replacements, postfix) ->
-    _.each i18n.config, (value) ->
-      if Object::toString.call(value) is "[object Object]"
-        rendered = i18n.l10n["#{value.code}.#{property}"]
+    for key of i18n.config
+      if Object::toString.call(i18n.config[key]) is "[object Object]"
+        rendered = i18n.l10n["#{i18n.config[key].code}.#{property}"]
         if rendered
           matches = rendered.match(/\{{(.*?)\}}/g)
           if matches and replacements
@@ -697,7 +696,7 @@ if Meteor.isClient
               while i >= 0
                 rendered = renderReplace(rendered, replacements, matches, i)
                 i--
-          defineReactiveProperyWrapper i18n.l10n, "#{value.code}.#{property}#{postfix}", rendered
+          defineReactiveProperyWrapper i18n.l10n, "#{i18n.config[key].code}.#{property}#{postfix}", rendered
 
   
   ###
