@@ -30,7 +30,7 @@ This structure with sample data will be automatically added if file `private/i18
 
 Settings
 ========
-#### Return key for non-existent key
+##### Return key for non-existent key
 ```javascript
 i18n.onWrongKey.returnKey = true;
 i18n.get('nonExistentKey'); // returns key: "nonExistentKey"
@@ -40,7 +40,7 @@ i18n.get('nonExistentKey'); // returns empty string: ""
 
 Client usage
 ========
-#### `get()` method
+##### `get()` method
 ```javascript
 /*
  * @function
@@ -53,7 +53,7 @@ Client usage
 i18n.get(locale, param, replacements)
 ```
 
-#### `setLocale()` method
+##### `setLocale()` method
 ```javascript
 /*
  * @function
@@ -66,75 +66,75 @@ i18n.get(locale, param, replacements)
 i18n.setLocale(locale)
 ```
 
-#### Set locale
+##### Set locale
 ```javascript
 i18n.setLocale('en');
 ```
 
-#### Get value by key
+##### Get value by key
 ```javascript
 i18n.get('sample.hello');
 ```
 
-#### Get value by key in different locale than current
+##### Get value by key in different locale than current
 ```javascript
 i18n.get('de', 'sample.hello');
 ```
 
-#### Get value by key with single placeholder
+##### Get value by key with single placeholder
 ```javascript
 // Hi {{name}}!
 i18n.get('sample.userHello', 'Michael');
 ```
 
-#### Get value by key with multiply placeholders as Object
+##### Get value by key with multiply placeholders as Object
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('sample.fullName', {first: 'Michael', middle: 'A.', last: 'Macht'});
 ```
 
-#### Get value by key with multiply placeholders as Object, with wrong key
+##### Get value by key with multiply placeholders as Object, with wrong key
 __Note: wrong key will be omitted__
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('sample.fullName', {first: 'Michael', middle: 'A.', wrong: 'Macht'});
 ```
 
-#### Get value by key with multiply placeholders with replacements as arguments
+##### Get value by key with multiply placeholders with replacements as arguments
 __Note: this example relies on arguments order__
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('sample.fullName', 'Michael', 'A.', 'Macht');
 ```
 
-#### Get value by key with multiply placeholders as Array
+##### Get value by key with multiply placeholders as Array
 __Note: this example relies on array order__
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('sample.fullName', ['Michael', 'A.', 'Macht']);
 ```
 
-#### Get configuration object
+##### Get configuration object
 ```javascript
 i18n.config;
 ```
 
-#### Get user's browser locale (preferred locale)
+##### Get user's browser locale (preferred locale)
 ```javascript
 i18n.userLocale;
 ```
 
-#### Get current Client's locale
+##### Get current Client's locale
 ```javascript
 i18n.currentLocale;
 ```
 
-#### Get current default locale
+##### Get current default locale
 ```javascript
 i18n.defaultLocale;
 ```
 
-#### Get l10ns as object
+##### Get l10ns as object
 ```javascript
 i18n.localizations;
 ```
@@ -143,7 +143,7 @@ Server usage
 ========
 __Note:__ Server has no `setLocale()` method
 
-#### `get()` method
+##### `get()` method
 ```javascript
 /*
  * @function
@@ -156,44 +156,44 @@ __Note:__ Server has no `setLocale()` method
 i18n.get(locale, param, replacements)
 ```
 
-#### Get value in default language by key
+##### Get value in default language by key
 ```javascript
 i18n.get('sample.hello');
 i18n.get('sample.userHello', 'Michael');
 ```
 
-#### Get value by key
+##### Get value by key
 ```javascript
 i18n.get('en', 'sample.hello');
 ```
 
-#### Get value by key with single placeholder
+##### Get value by key with single placeholder
 ```javascript
 // Hi {{name}}!
 i18n.get('de', 'sample.userHello', 'Michael');
 ```
 
-#### Get value by key with multiply placeholders with replacements as arguments
+##### Get value by key with multiply placeholders with replacements as arguments
 __Note: this example relies on arguments order__
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('ru', 'sample.fullName', 'Michael', 'A.', 'Macht');
 ```
 
-#### Get value by key with multiply placeholders as Array
+##### Get value by key with multiply placeholders as Array
 __Note: this example relies on array order__
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('ru', 'sample.fullName', ['Michael', 'A.', 'Macht']);
 ```
 
-#### Get value by key with multiply placeholders as Object
+##### Get value by key with multiply placeholders as Object
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('ru', 'sample.fullName', {first: 'Michael', middle: 'A.', last: 'Macht'});
 ```
 
-#### Get value by key with multiply placeholders as Object, with wrong key
+##### Get value by key with multiply placeholders as Object, with wrong key
 __Note: wrong key will be omitted__
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
@@ -221,7 +221,7 @@ p {{i18n 'sample.fullName' first='Michael' middle='A.' third='Macht'}}
 ```
 
 
-#### Template language switcher example
+##### Template language switcher example
 ```html
 <template name="i18nSwitcher">
   <ul class="">
