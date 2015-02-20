@@ -394,51 +394,78 @@ if Meteor.isServer
   @param    {string}   param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
   @param    {mix}      replacements - Object, array, or string of replacements
   ###
-  i18n.get = (locale, param, replacements, cb) ->
+  i18n.get = () ->
     if i18n.isReady and i18n.isStarted
-      if arguments.length < 3 and locale.length isnt 2 and locale.indexOf('.') isnt -1
-        if _.isString(param) or _.isObject(param)
-          replacements = if _.isObject param then param else param.clone()
-        if _.isString locale 
-          param = locale.clone() 
-        locale = @currentLocale || @defaultLocale
 
-      replacements['hash'] = replacements if replacements
+      if arguments[0] and arguments[0].indexOf('.') isnt -1
+        locale = @currentLocale or @defaultLocale
+        param = arguments[0]
+        xStart = 1
+      else
+        locale = arguments[0]
+        param = arguments[1]
+        xStart = 2
 
-      locale = locale or @defaultLocale
-      splitted = param.split '.'
-      deepen = (obj, keypath, index=0)->
-        if obj && keypath[index]
-          key = keypath[index]
-          if obj[key]
-            value = obj[key]
-            if typeof value is 'object' then deepen value, keypath, index + 1 else value
+      if locale and param
+        if arguments.length is xStart + 1 and (!arguments[xStart + 2] or _.isFunction(arguments[xStart + 2]))
+          
+          if _.isFunction arguments[xStart]
+            cb = arguments[xStart]
           else
-            return if i18n.onWrongKey.returnKey then param else ""
+            replacements = arguments[xStart]
+
+        else if arguments.length >= xStart + 1
+          x = xStart
+          replacements = []
+          while arguments.length >= x + 1
+            if _.isFunction arguments[x]
+              cb = arguments[x]
+            else
+              replacements.push arguments[x]
+            x++
+
+        splitted = param.split '.'
+
+        deepen = (obj, keypath, index=0)->
+          if obj && keypath[index]
+            key = keypath[index]
+            if obj[key]
+              value = obj[key]
+              if _.isObject(value) then deepen value, keypath, index + 1 else value
+            else
+              return if i18n.onWrongKey.returnKey then param else ""
+          else
+             return if i18n.onWrongKey.returnKey then param else ""
+
+        i18n.l10n["#{locale}.#{param}"] = deepen i18n.localizations[locale], splitted
+        if replacements and (_.isObject(replacements) or _.isString(replacements) or _.isArray(replacements))
+          postfix = SHA256 param + JSON.stringify(replacements)
+
+          if !i18n.l10n["#{locale}.#{param}#{postfix}"]
+            renderString param, replacements, postfix
+          
+          cb null, true if cb
+          return i18n.l10n["#{locale}.#{param}#{postfix}"]
+
         else
-           return if i18n.onWrongKey.returnKey then param else ""
+          cb null, true if cb
+          return i18n.l10n["#{locale}.#{param}"]
 
-      i18n.l10n["#{locale}.#{param}"] = deepen i18n.localizations[locale], splitted
-
-      if replacements and Object::toString.call(replacements) is "[object Object]" or replacements and Object::toString.call(replacements) is "[object String]" or replacements and Object::toString.call(replacements) is "[object Array]"
-
-        postfix = Math.random().toString(36).substring(2)
-        renderString param, replacements, postfix
-        cb and cb null, true
-        return i18n.l10n["#{locale}.#{param}#{postfix}"]
-      
-      cb and cb null, true
-      return i18n.l10n["#{locale}.#{param}"]
+      else
+        cb null, true if cb
+        return ''
 
     else unless i18n.isReady
       ticker = ''
       Meteor.wrapAsync((params, cb)->
         ticker = Meteor.setTimeout (->
-          i18n.get params.locale, params.param, params.replacements, cb
+          params = _.values(params)
+          params.push(cb)
+          i18n.get.apply this, params
           Meteor.clearInterval ticker
         ), 250
-      )({locale: locale, param:param, replacements:replacements})
-      return i18n.l10n["#{locale}.#{param}"]
+      )(arguments)
+      return i18n.l10n["#{locale}.#{param}"] or ''
 
   ###
   @function
@@ -454,20 +481,20 @@ if Meteor.isServer
   ###
   renderString = (property, replacements, postfix) ->
     for key of i18n.config
-      if Object::toString.call(i18n.config[key]) is "[object Object]"
+      if _.isObject i18n.config[key]
         rendered = i18n.l10n["#{i18n.config[key].code}.#{property}"]
         if rendered
           matches = rendered.match(/\{{(.*?)\}}/g)
           if matches and replacements
-            if Object::toString.call(replacements) is "[object String]"
+            if _.isString replacements
               i = matches.length - 1
               while i >= 0
-                rendered = rendered.replace(matches[i], replacements)
+                rendered = rendered.replace matches[i], replacements
                 i--
             else
               i = matches.length - 1
               while i >= 0
-                rendered = renderReplace(rendered, replacements, matches, i)
+                rendered = renderReplace rendered, replacements, matches, i
                 i--
           i18n.l10n["#{i18n.config[key].code}.#{property}#{postfix}"] = rendered
 
@@ -489,8 +516,8 @@ if Meteor.isClient
   @description i18n helper UI Spacebars helper
   @example {{i18n 'string'}}
   ###
-  Template.registerHelper "i18n", (property, replacements) ->
-    i18n.get property, replacements
+  Template.registerHelper "i18n", () ->
+    i18n.get.apply(this, arguments)
   
   ###
   @namespace i18n
@@ -645,26 +672,43 @@ if Meteor.isClient
   @param    {string}    param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
   @param    {mix}       replacements - Object, array, or string of replacements
   ###
-  i18n.get = (locale, param, replacements) ->
-    if arguments.length < 3 and locale.length isnt 2 and locale.indexOf('.') isnt -1
-      if _.isString(param) or _.isObject(param)
-        replacements = if _.isObject param then param else param.clone()
-      if _.isString locale 
-        param = locale.clone() 
+  i18n.get = () ->
+    if arguments[0].indexOf('.') isnt -1
       locale = Session.get "i18nCurrentLocale"
+      param = arguments[0]
+      xStart = 1
+    else
+      locale = arguments[0]
+      param = arguments[1]
+      xStart = 2
 
+    if arguments.length is xStart + 1
+      if arguments[xStart].hash
+        replacements = arguments[xStart].hash
+      else
+        replacements = arguments[xStart]
+    else if arguments.length > xStart + 1
+      x = xStart
+      replacements = []
+      while arguments.length >= x + 1
+        if arguments[x] instanceof Spacebars.kw
+          replacements = arguments[x].hash if !_.isEmpty(arguments[x].hash)
+        else
+          replacements.push arguments[x]
+        x++
+        
     if !Session.get "#{locale}.#{param}"
-      return if @onWrongKey.returnKey then param else ""
+      return if i18n.onWrongKey.returnKey then param else ""
 
-    else if replacements and Object::toString.call(replacements) is "[object Object]" or replacements and Object::toString.call(replacements) is "[object String]" or replacements and Object::toString.call(replacements) is "[object Array]"
+    else if replacements
+      postfix = SHA256 param + JSON.stringify(replacements)
+      if !Session.get "#{locale}.#{param}#{postfix}"
+        renderString param, replacements, postfix
+      return Session.get "#{locale}.#{param}#{postfix}"
 
-      replacements.hash ?= replacements
-      postfix = if replacements and _.isString(replacements) or replacements and replacements.hash and not _.isEmpty(replacements.hash) then "-" + Math.random().toString(36).substring(2) else ''
-      renderString param, replacements, postfix
-      Session.get "#{locale}.#{param}#{postfix}"
     else
       tmp = Session.get "#{locale}.#{param}"
-      (if (tmp) then tmp else (if (param.indexOf(".") isnt -1) then "" else param))
+      return (if (tmp) then tmp else (if (param.indexOf(".") isnt -1) then "" else param))
 
   
   ###
@@ -681,20 +725,17 @@ if Meteor.isClient
   ###
   renderString = (property, replacements, postfix) ->
     for key of i18n.config
-      if Object::toString.call(i18n.config[key]) is "[object Object]"
+      if _.isObject i18n.config[key]
         rendered = i18n.l10n["#{i18n.config[key].code}.#{property}"]
         if rendered
           matches = rendered.match(/\{{(.*?)\}}/g)
           if matches and replacements
-            if Object::toString.call(replacements) is "[object String]"
-              i = matches.length - 1
-              while i >= 0
-                rendered = rendered.replace(matches[i], replacements)
-                i--
+            if _.isString replacements
+              rendered = rendered.replace matches[0], replacements
             else
               i = matches.length - 1
               while i >= 0
-                rendered = renderReplace(rendered, replacements, matches, i)
+                rendered = renderReplace rendered, replacements, matches, i
                 i--
           defineReactiveProperyWrapper i18n.l10n, "#{i18n.config[key].code}.#{property}#{postfix}", rendered
 
@@ -718,20 +759,20 @@ if Meteor.isClient
 @param {int}     index           - Current index from matches array
 ###
 renderReplace = (string, replacements, matches, index) ->
-  unless replacements.hash[matches[index].replace("{{", "").replace("}}", "").trim()]
-    escapedMatch = matches[index].replace("{{", "").replace("}}", "").trim()
-    if Object::toString.call(replacements) is "[object Array]"
-      string.replace matches[index], replacements[index]
+  escapedMatch = matches[index].replace("{{", "").replace("}}", "").trim()
+  unless replacements[escapedMatch]
+    if _.isArray replacements
+      string.replace matches[index], if replacements[index] then replacements[index] else ''
     else if escapedMatch.indexOf(".") isnt -1
-      params = escapedMatch.split(".")
-      replacement = replacements.hash
-      if replacement[params[0]] and Object::toString.call(replacements) is "[object Object]"
+      params = escapedMatch.split "."
+      if replacements[params[0]] and _.isObject replacements
         i = 0
         while i < params.length
-          replacement = replacement[params[i]]
+          replacement = replacements[params[i]]
           i++
-        string.replace matches[index], replacement
+        string.replace matches[index], if replacement then replacement else ''
     else
-      string.replace matches[index], replacements.hash[Object.keys(replacements.hash)[index]]
-  else
-    string.replace matches[index], replacements.hash[matches[index].replace("{{", "").replace("}}", "").trim()]
+      string.replace matches[index], ''
+
+  else if matches[index] and replacements[escapedMatch]
+    string.replace matches[index], replacements[escapedMatch]

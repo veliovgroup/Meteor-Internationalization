@@ -87,19 +87,28 @@ i18n.get('de', 'sample.hello');
 i18n.get('sample.userHello', 'Michael');
 ```
 
-#### Get value by key with multiply placeholders by Object
+#### Get value by key with multiply placeholders as Object
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('sample.fullName', {first: 'Michael', middle: 'A.', last: 'Macht'});
 ```
 
-#### Get value by key with multiply placeholders by Object, with wrong key
+#### Get value by key with multiply placeholders as Object, with wrong key
+__Note: wrong key will be omitted__
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('sample.fullName', {first: 'Michael', middle: 'A.', wrong: 'Macht'});
 ```
 
-#### Get value by key with multiply placeholders by Array
+#### Get value by key with multiply placeholders with replacements as arguments
+__Note: this example relies on arguments order__
+```javascript
+// User's full name is: {{first}} {{middle}} {{last}}
+i18n.get('sample.fullName', 'Michael', 'A.', 'Macht');
+```
+
+#### Get value by key with multiply placeholders as Array
+__Note: this example relies on array order__
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('sample.fullName', ['Michael', 'A.', 'Macht']);
@@ -164,13 +173,28 @@ i18n.get('en', 'sample.hello');
 i18n.get('de', 'sample.userHello', 'Michael');
 ```
 
-#### Get value by key with multiply placeholders by Object
+#### Get value by key with multiply placeholders with replacements as arguments
+__Note: this example relies on arguments order__
+```javascript
+// User's full name is: {{first}} {{middle}} {{last}}
+i18n.get('ru', 'sample.fullName', 'Michael', 'A.', 'Macht');
+```
+
+#### Get value by key with multiply placeholders as Array
+__Note: this example relies on array order__
+```javascript
+// User's full name is: {{first}} {{middle}} {{last}}
+i18n.get('ru', 'sample.fullName', ['Michael', 'A.', 'Macht']);
+```
+
+#### Get value by key with multiply placeholders as Object
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('ru', 'sample.fullName', {first: 'Michael', middle: 'A.', last: 'Macht'});
 ```
 
-#### Get value by key with multiply placeholders by Object, with wrong key
+#### Get value by key with multiply placeholders as Object, with wrong key
+__Note: wrong key will be omitted__
 ```javascript
 // User's full name is: {{first}} {{middle}} {{last}}
 i18n.get('de', 'sample.fullName', {first: 'Michael', middle: 'A.', wrong: 'Macht'});
@@ -189,6 +213,9 @@ Template helpers
 p {{i18n 'sample.hello'}}
 p {{{i18n 'sample.html'}}}
 p {{i18n 'sample.fullName'}}
+p {{i18n 'sample.fullName', 'Michael' 'A.' 'Macht'}}
+p {{i18n 'en' 'sample.fullName', 'Michael' 'A.' 'Macht'}}
+p {{i18n 'de' 'sample.fullName', first='Michael' middle='A.' last='Macht'}}
 p {{i18n 'sample.fullName' first='Michael' middle='A.' last='Macht'}}
 p {{i18n 'sample.fullName' first='Michael' middle='A.' third='Macht'}}
 ```

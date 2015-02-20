@@ -64,10 +64,18 @@ if(Meteor.isClient){
 
   Tinytest.add('get() with wrong placeholders', function (test) {
     i18n.setLocale('en');
-    test.equal(i18n.get('sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'User\'s full name is: Michael A. Macht');
+    test.equal(i18n.get('sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'User\'s full name is: Michael A. ');
 
     i18n.setLocale('de');
-    test.equal(i18n.get('sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'Vollständige Name des Benutzers ist: Michael A. Macht');
+    test.equal(i18n.get('sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'Vollständige Name des Benutzers ist: Michael A. ');
+  });
+
+  Tinytest.add('get() with placeholders as parameters', function (test) {
+    i18n.setLocale('en');
+    test.equal(i18n.get('sample.fullName', 'Michael', 'A.', 'Macht'), 'User\'s full name is: Michael A. Macht');
+
+    i18n.setLocale('de');
+    test.equal(i18n.get('sample.fullName', 'Michael', 'A.', 'Macht'), 'Vollständige Name des Benutzers ist: Michael A. Macht');
   });
 }
 
@@ -77,7 +85,7 @@ if(Meteor.isServer){
     test.equal(i18n.get('sample.hello'), 'Hello');
     test.equal(i18n.get('sample.userHello', 'ostrio'), 'Hi ostrio!');
     test.equal(i18n.get('sample.fullName', ['Michael', 'A.', 'Macht']), 'User\'s full name is: Michael A. Macht');
-    test.equal(i18n.get('sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'User\'s full name is: Michael A. Macht');
+    test.equal(i18n.get('sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'User\'s full name is: Michael A. ');
   });
 
   Tinytest.add('get() with placeholder', function (test) {
@@ -96,13 +104,23 @@ if(Meteor.isServer){
   });
 
   Tinytest.add('get() with wrong placeholders', function (test) {
-    test.equal(i18n.get('en', 'sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'User\'s full name is: Michael A. Macht');
+    test.equal(i18n.get('en', 'sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'User\'s full name is: Michael A. ');
 
-    test.equal(i18n.get('de', 'sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'Vollständige Name des Benutzers ist: Michael A. Macht');
+    test.equal(i18n.get('de', 'sample.fullName', {first: 'Michael', middle: 'A.', third: 'Macht'}), 'Vollständige Name des Benutzers ist: Michael A. ');
   });
 
   Tinytest.add('get() non-existent key', function (test) {
     test.equal(i18n.get('en', 'samle.hell'), 'samle.hell');
     test.equal(i18n.get('de', 'samle.hell'), 'samle.hell');
+  });
+
+  Tinytest.add('get() with placeholders as parameters', function (test) {
+    test.equal(i18n.get('en', 'sample.fullName', 'Michael', 'A.', 'Macht'), 'User\'s full name is: Michael A. Macht');
+    test.equal(i18n.get('de', 'sample.fullName', 'Michael', 'A.', 'Macht'), 'Vollständige Name des Benutzers ist: Michael A. Macht');
+  });
+
+  Tinytest.add('get() with placeholders as parameters with callback', function (test) {
+    test.equal(i18n.get('en', 'sample.fullName', 'Michael', 'A.', 'Macht', function(){ console.log("i18n on Server after render callback", arguments) }), 'User\'s full name is: Michael A. Macht');
+    test.equal(i18n.get('de', 'sample.fullName', 'Michael', 'A.', 'Macht', function(){ console.log("i18n on Server after render callback", arguments) }), 'Vollständige Name des Benutzers ist: Michael A. Macht');
   });
 }
