@@ -40,6 +40,26 @@ i18n.get('nonExistentKey'); // returns empty string: ""
 
 Isomorphic usage
 ========
+##### `get()` method
+```javascript
+/*
+ * @function
+ * @namespace i18n
+ * @property {function} get          - Get values, and do pattern replaces from current localization
+ * @param    {string}   locale       - [OPTIONAL] Two-letter localization code
+ * @param    {string}   param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
+ * @param    {mix}      replacements - Object, array, or string of replacements
+ */
+i18n.get(param); // Current locale, no replacements
+i18n.get('file.obj.key');
+
+i18n.get(param, replacements); // Current locale, with replacements
+i18n.get('file.obj.key', 'username'); // Hello {{username}} -> Hello username
+
+i18n.get(locale, param, replacements); // Force locale, with replacements
+i18n.get('en', 'file.obj.key', 'username'); // Hello {{username}} -> Hello username
+```
+
 ##### Get current localization at any environment
 ```javascript
 i18n.locale();
@@ -52,19 +72,6 @@ i18n.get(i18n.locale(), 'file.obj.key');
 
 Client usage
 ========
-##### `get()` method
-```javascript
-/*
- * @function
- * @namespace i18n
- * @property {function} get          - Get values, and do pattern replaces from current localization
- * @param    {string}   locale       - [OPTIONAL] Two-letter localization code
- * @param    {string}   param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
- * @param    {mix}      replacements - Object, array, or string of replacements
- */
-i18n.get(locale, param, replacements)
-```
-
 ##### `setLocale()` method
 ```javascript
 /*
@@ -154,19 +161,6 @@ i18n.localizations;
 Server usage
 ========
 __Note:__ Server has no `setLocale()` method
-
-##### `get()` method
-```javascript
-/*
- * @function
- * @namespace i18n
- * @property {function} get          - Get values, and do pattern replaces from current localization
- * @param    {string}   locale       - Two-letter localization code
- * @param    {string}   param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
- * @param    {mix}      replacements - Object, array, or string of replacements
- */
-i18n.get(locale, param, replacements)
-```
 
 ##### Get value in default language by key
 ```javascript
