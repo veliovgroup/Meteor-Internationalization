@@ -673,7 +673,7 @@ if Meteor.isClient
   @param    {mix}       replacements - Object, array, or string of replacements
   ###
   i18n.get = () ->
-    if arguments[0].indexOf('.') isnt -1
+    if arguments[0] and arguments[0].indexOf('.') isnt -1
       locale = Session.get "i18nCurrentLocale"
       param = arguments[0]
       xStart = 1
@@ -747,6 +747,9 @@ if Meteor.isClient
     i18n.isReady = true
     i18n.init @defaultLocale unless i18n.isStarted
 
+
+i18n.locale = ->
+  if Meteor.isServer then @currentLocale else Session.get 'i18nCurrentLocale'
 
 ###
 @function

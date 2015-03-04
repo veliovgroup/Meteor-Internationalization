@@ -38,6 +38,18 @@ i18n.onWrongKey.returnKey = false;
 i18n.get('nonExistentKey'); // returns empty string: ""
 ```
 
+Isomorphic usage
+========
+##### Get current location at any environment
+```javascript
+i18n.locale();
+```
+
+##### Get localization value
+```javascript
+i18n.get(i18n.locale(), 'file.obj.key');
+```
+
 Client usage
 ========
 ##### `get()` method
