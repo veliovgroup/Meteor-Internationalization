@@ -40,7 +40,7 @@ i18n.get('nonExistentKey'); // returns empty string: ""
 
 Isomorphic usage
 ========
-##### Get current location at any environment
+##### Get current localization at any environment
 ```javascript
 i18n.locale();
 ```
