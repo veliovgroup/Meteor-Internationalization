@@ -245,7 +245,7 @@ p {{i18n 'sample.fullName' first='Michael' middle='A.' third='Macht'}}
 
 <template name="i18nList">
 {{#if this.value.code}}
-  {{#if isNotEqual this.value.code this.currentLocale}}
+  {{#if compare this.value.code '!==' this.currentLocale}}
     <li>
       <a href="#" onclick="i18n.setLocale('{{this.value.code}}'); return false;">{{this.value.name}}</a>
     </li>
