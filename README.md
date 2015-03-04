@@ -62,7 +62,8 @@ i18n.get('en', 'file.obj.key', 'username'); // Hello {{username}} -> Hello usern
 
 ##### Get current localization at any environment
 ```javascript
-i18n.locale();
+i18n.currentLocale; // Non-reactive
+i18n.locale(); // Reactive
 ```
 
 ##### Get localization value
