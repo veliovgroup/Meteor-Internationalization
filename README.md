@@ -154,11 +154,6 @@ i18n.currentLocale;
 i18n.defaultLocale;
 ```
 
-##### Get l10ns as object
-```javascript
-i18n.localizations;
-```
-
 Server usage
 ========
 __Note:__ Server has no `setLocale()` method

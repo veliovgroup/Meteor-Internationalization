@@ -20,11 +20,15 @@
     returnKey: true
   isReady: false
   isStarted: false
-  l10n: {}
   config: {}
-  localizations: {}
-  internalizationCollection: new Meteor.Collection("internalization")
-  sampleData:
+  internalizationCollection: new Meteor.Collection "internalization"
+
+_l10n = {}
+_Localizations = {}
+
+
+if Meteor.isServer
+  _SampleData = 
     de:
       nestedFolder:
         support:
@@ -74,8 +78,6 @@
         route: "i18n/en/"
 
 
-
-if Meteor.isServer
   fs = Npm.require "fs-extra"
   bound = Meteor.bindEnvironment (callback) ->
     callback()
@@ -95,11 +97,11 @@ if Meteor.isServer
   if !fs.existsSync "#{i18n.path}/i18n.json"
     fs.mkdirsSync "#{i18n.path}/de/nested/folder", 0o0750
     fs.mkdirsSync "#{i18n.path}/en/nested/folder", 0o0750
-    fs.writeJSONSync "#{i18n.path}/de/nested/folder/is.json", i18n.sampleData.de.nestedFolder
-    fs.writeJSONSync "#{i18n.path}/en/nested/folder/is.json", i18n.sampleData.en.nestedFolder
-    fs.writeJSONSync "#{i18n.path}/de/sample.json", i18n.sampleData.de.sample
-    fs.writeJSONSync "#{i18n.path}/en/sample.json", i18n.sampleData.en.sample
-    fs.writeJSONSync "#{i18n.path}/i18n.json", i18n.sampleData.i18nConfig
+    fs.writeJSONSync "#{i18n.path}/de/nested/folder/is.json", _SampleData.de.nestedFolder
+    fs.writeJSONSync "#{i18n.path}/en/nested/folder/is.json", _SampleData.en.nestedFolder
+    fs.writeJSONSync "#{i18n.path}/de/sample.json", _SampleData.de.sample
+    fs.writeJSONSync "#{i18n.path}/en/sample.json", _SampleData.en.sample
+    fs.writeJSONSync "#{i18n.path}/i18n.json", _SampleData.i18nConfig
 
   
   ###
@@ -187,7 +189,7 @@ if Meteor.isServer
     i18n.internalizationCollection.upsert
       type: "localizations"
     ,
-      value: i18n.localizations
+      value: _Localizations
       type: "localizations"
 
     i18n.internalizationCollection.upsert
@@ -210,7 +212,7 @@ if Meteor.isServer
     path = path.replace(process.env.PWD, "").replace("#{i18n.storageDir}/", "")
     path = removeTrailingSlash(path)
     pathArray = path.split("/")
-    localI18n = i18n.localizations
+    localI18n = _Localizations
     i = 0
 
     while i < pathArray.length
@@ -274,7 +276,7 @@ if Meteor.isServer
       
         return callback(err) if err and callback
         pending = list.length
-        return callback(null, i18n.localizations)  if not pending and callback
+        return callback(null, _Localizations)  if not pending and callback
 
         list.forEach (file) ->
           file = "#{path}/#{file}"
@@ -283,13 +285,13 @@ if Meteor.isServer
             if stat and stat.isDirectory()
               pathToObj file, ->
                 traverseI18nFiles file, ->
-                  callback null, i18n.localizations  if not --pending and callback
+                  callback null, _Localizations  if not --pending and callback
             else
               if file.indexOf(".json") isnt -1
                 pathToObj file, ->
                   readFile file
 
-            callback null, i18n.localizations  if not --pending and callback
+            callback null, _Localizations  if not --pending and callback
             
       
 
@@ -298,13 +300,13 @@ if Meteor.isServer
   @function
   @name readFile
   @description Read file and add it's contents
-               into localI18n variable which linked to i18n.localizations object
+               into localI18n variable which linked to _Localizations object
   @param {string}   file     - Path to existing file
   @param {function} callback - Callback function with one parameter - localI18n - the last object we write to
   @callback(error, object)
   ###
   readFile = (file, callback) ->
-    localI18n = i18n.localizations
+    localI18n = _Localizations
     filenames = file.replace(process.env.PWD, "").replace("#{i18n.storageDir}/", "").split("/")
     i = 0
 
@@ -330,7 +332,7 @@ if Meteor.isServer
   @param {string} file       - Full path to file on server
   @param {array}  filenames  - Array of folders names
   @param {number} index      - Index of working directory from Filenames Array
-  @param {object} li18n      - Linked object to i18n.localizations property
+  @param {object} li18n      - Linked object to _Localizations property
   @param {function} callback - Callback function with four parameters - file contents, filenames, index, li18n
   @callback(data, filenames, index, li18n)
   ###
@@ -437,19 +439,19 @@ if Meteor.isServer
           else
              return if i18n.onWrongKey.returnKey then param else ""
 
-        i18n.l10n["#{locale}.#{param}"] = deepen i18n.localizations[locale], splitted
+        _l10n["#{locale}.#{param}"] = deepen _Localizations[locale], splitted
         if replacements and (_.isObject(replacements) or _.isString(replacements) or _.isArray(replacements))
           postfix = SHA256 param + JSON.stringify(replacements)
 
-          if !i18n.l10n["#{locale}.#{param}#{postfix}"]
+          if !_l10n["#{locale}.#{param}#{postfix}"]
             renderString param, replacements, postfix
           
           cb null, true if cb
-          return i18n.l10n["#{locale}.#{param}#{postfix}"]
+          return _l10n["#{locale}.#{param}#{postfix}"]
 
         else
           cb null, true if cb
-          return i18n.l10n["#{locale}.#{param}"]
+          return _l10n["#{locale}.#{param}"]
 
       else
         cb null, true if cb
@@ -465,14 +467,14 @@ if Meteor.isServer
           Meteor.clearInterval ticker
         ), 250
       )(arguments)
-      return i18n.l10n["#{locale}.#{param}"] or ''
+      return _l10n["#{locale}.#{param}"] or ''
 
   ###
   @function
   @name renderString
   @description Render string - replace Handlebars placeholders by values
   
-  @param {string}  property        - Name of property in i18n.l10n object
+  @param {string}  property        - Name of property in _l10n object
   @param {mix}     replacements    - Object, array, or string of replacements
   @param {string}  postfix         - Unique postfix, appended to property string
   
@@ -482,7 +484,7 @@ if Meteor.isServer
   renderString = (property, replacements, postfix) ->
     for key of i18n.config
       if _.isObject i18n.config[key]
-        rendered = i18n.l10n["#{i18n.config[key].code}.#{property}"]
+        rendered = _l10n["#{i18n.config[key].code}.#{property}"]
         if rendered
           matches = rendered.match(/\{{(.*?)\}}/g)
           if matches and replacements
@@ -496,7 +498,7 @@ if Meteor.isServer
               while i >= 0
                 rendered = renderReplace rendered, replacements, matches, i
                 i--
-          i18n.l10n["#{i18n.config[key].code}.#{property}#{postfix}"] = rendered
+          _l10n["#{i18n.config[key].code}.#{property}#{postfix}"] = rendered
 
   
   ###
@@ -511,7 +513,7 @@ if Meteor.isServer
 # CLIENT SIDE
 ###
 if Meteor.isClient
-  
+  _Strings = {}
   ###
   @description i18n helper UI Spacebars helper
   @example {{i18n 'string'}}
@@ -529,13 +531,13 @@ if Meteor.isClient
   ###
   @function
   @name loadLocalizations
-  @description Load localization files into i18n.localizations property
+  @description Load localization files into _Localizations property
   @param {string} locale - Two letter locale code
   ###
   loadLocalizations = (locale) ->
-    i18n.localizations = i18n.internalizationCollection.findOne(type: "localizations").value
-    reactivateObject i18n.localizations
-    i18n.localizations[locale]  if locale
+    _Localizations = i18n.internalizationCollection.findOne(type: "localizations").value
+    reactivateObject _Localizations
+    _Localizations[locale] if locale
 
   
   ###
@@ -553,7 +555,7 @@ if Meteor.isClient
           if Object::toString.call(object[key]) is "[object Object]"
             reactivateObject object[key], (if (parent) then "#{parent}.#{key}" else key)
           else
-            defineReactiveProperyWrapper i18n.l10n, "#{parent}.#{key}", object[key]
+            defineReactiveProperyWrapper _l10n, "#{parent}.#{key}", object[key]
 
   
   ###
@@ -567,12 +569,11 @@ if Meteor.isClient
   defineReactiveProperyWrapper = (obj, key, value) ->
     if !_.has obj, key
       Object.defineReactiveProperty obj, key, value, ((property, value, object) ->
-        object.isReactive = true
-        Session.set property, value
+        _Strings[property] = value if !_.has _Strings, property
       ), ((property) ->
-        Session.get property
+        return _Strings[property] if _.has _Strings, property
       ), (property, value) ->
-        Session.set property, value
+        _Strings[property] = value
 
   
   ###
@@ -595,18 +596,18 @@ if Meteor.isClient
   ###
   i18n.setLocale = (locale) ->
     if i18n.isStarted
-      if i18n.localizations[locale]
+      if _Localizations[locale]
         i18n.currentLocale = locale
         Meteor.storage.set "locale", locale
         Session.set "i18nCurrentLocale", locale
         i18nConfigArray = []
-        for key of i18n.localizations
+        for key of _Localizations
           i18nConfigArray.push
             name: key
             value: i18n.config[key]
             currentLocale: Session.get "i18nCurrentLocale"
         Session.set "i18nConfig", i18nConfigArray
-      else if i18n.localizations[i18n.config.defaultLocale]
+      else if _Localizations[i18n.config.defaultLocale]
         i18n.setLocale i18n.config.defaultLocale
       else
         throwError 404, locale
@@ -697,18 +698,17 @@ if Meteor.isClient
           replacements.push arguments[x]
         x++
         
-    if !Session.get "#{locale}.#{param}"
+    if !_.has _Strings, "#{locale}.#{param}"
       return if i18n.onWrongKey.returnKey then param else ""
 
-    else if replacements
-      postfix = SHA256 param + JSON.stringify(replacements)
-      if !Session.get "#{locale}.#{param}#{postfix}"
+    else if replacements and Object.getOwnPropertyNames(replacements).length > 0
+      postfix = SHA256 param + JSON.stringify replacements
+      if !_.has _Strings, "#{locale}.#{param}#{postfix}"
         renderString param, replacements, postfix
-      return Session.get "#{locale}.#{param}#{postfix}"
+      return _Strings["#{locale}.#{param}#{postfix}"]
 
     else
-      tmp = Session.get "#{locale}.#{param}"
-      return (if (tmp) then tmp else (if (param.indexOf(".") isnt -1) then "" else param))
+      return (if (_.has _Strings, "#{locale}.#{param}") then _Strings["#{locale}.#{param}"] else (if (param.indexOf(".") isnt -1) then "" else param))
 
   
   ###
@@ -716,7 +716,7 @@ if Meteor.isClient
   @name renderString
   @description Render string - replace Handlebars placeholders by values
   
-  @param {string}  property        - Name of property in i18n.l10n object
+  @param {string}  property        - Name of property in _l10n object
   @param {mix}     replacements    - Object, array, or string of replacements
   @param {string}  postfix         - Unique postfix, appended to property string
   
@@ -726,7 +726,7 @@ if Meteor.isClient
   renderString = (property, replacements, postfix) ->
     for key of i18n.config
       if _.isObject i18n.config[key]
-        rendered = i18n.l10n["#{i18n.config[key].code}.#{property}"]
+        rendered = _l10n["#{i18n.config[key].code}.#{property}"]
         if rendered
           matches = rendered.match(/\{{(.*?)\}}/g)
           if matches and replacements
@@ -737,7 +737,7 @@ if Meteor.isClient
               while i >= 0
                 rendered = renderReplace rendered, replacements, matches, i
                 i--
-          defineReactiveProperyWrapper i18n.l10n, "#{i18n.config[key].code}.#{property}#{postfix}", rendered
+          defineReactiveProperyWrapper _l10n, "#{i18n.config[key].code}.#{property}#{postfix}", rendered
 
   
   ###
@@ -756,7 +756,7 @@ i18n.locale = ->
 @name renderReplace
 @description Smart Handlebars placeholders replacing
 
-@param {string}  string          - Name of property in i18n.l10n object
+@param {string}  string          - Name of property in _l10n object
 @param {mix}     replacements    - Object, array, or string of replacements
 @param {array}   matches         - Array of all found Handlebars placeholders
 @param {int}     index           - Current index from matches array
