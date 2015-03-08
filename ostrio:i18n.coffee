@@ -701,7 +701,7 @@ if Meteor.isClient
     if !_.has _Strings, "#{locale}.#{param}"
       return if i18n.onWrongKey.returnKey then param else ""
 
-    else if replacements and Object.getOwnPropertyNames(replacements).length > 0
+    else if replacements
       postfix = SHA256 param + JSON.stringify replacements
       if !_.has _Strings, "#{locale}.#{param}#{postfix}"
         renderString param, replacements, postfix

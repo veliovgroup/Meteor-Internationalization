@@ -1,7 +1,7 @@
 Package.describe({
   name: 'ostrio:i18n',
   summary: 'Reactive and fast i18n isomorphic driver for Meteor with support of placeholders.',
-  version: '1.4.1',
+  version: '1.4.3',
   git: 'https://github.com/VeliovGroup/Meteor-Internationalization',
   documentation: 'README.md'
 });

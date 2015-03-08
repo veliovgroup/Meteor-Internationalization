@@ -16,7 +16,7 @@ htmljs@1.0.3
 id-map@1.0.2
 jquery@1.11.3
 json@1.0.2
-local-test:ostrio:i18n@1.4.1
+local-test:ostrio:i18n@1.4.3
 localstorage@1.0.2
 logging@1.0.6
 meteor@1.1.4
@@ -27,7 +27,7 @@ observe-sequence@1.0.4
 ordered-dict@1.0.2
 ostrio:cookies@0.0.3
 ostrio:cstorage@0.0.2
-ostrio:i18n@1.4.1
+ostrio:i18n@1.4.3
 ostrio:jsextensions@0.0.4
 random@1.0.2
 reactive-dict@1.0.5
