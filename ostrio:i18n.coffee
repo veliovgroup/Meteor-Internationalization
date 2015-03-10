@@ -698,18 +698,17 @@ if Meteor.isClient
           replacements.push arguments[x]
         x++
         
-    if !_.has _Strings, "#{locale}.#{param}"
+    if !_.has _l10n, "#{locale}.#{param}"
       return if i18n.onWrongKey.returnKey then param else ""
 
-    else if replacements
+    else if replacements and !_.isEmpty replacements
       postfix = SHA256 param + JSON.stringify replacements
       if !_.has _Strings, "#{locale}.#{param}#{postfix}"
         renderString param, replacements, postfix
-      return _Strings["#{locale}.#{param}#{postfix}"]
+      return _l10n["#{locale}.#{param}#{postfix}"]
 
     else
-      return (if (_.has _Strings, "#{locale}.#{param}") then _Strings["#{locale}.#{param}"] else (if (param.indexOf(".") isnt -1) then "" else param))
-
+      return _l10n["#{locale}.#{param}"]
   
   ###
   @function
