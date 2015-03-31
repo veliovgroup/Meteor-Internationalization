@@ -18,7 +18,7 @@ meteor add ostrio:i18n
     |   └── subFolder/ 
     |       └── anotherFile.json
     |
-    ├── en/ //--> Localization folder with name of country two-letter code
+    ├── de/ //--> Localization folder with name of country two-letter code
     |   ├── file.json
     |   └── subFolder/ 
     |       └── anotherFile.json
@@ -53,6 +53,9 @@ Isomorphic usage
 i18n.get(param); // Current locale, no replacements
 i18n.get('file.obj.key');
 
+i18n.get(locale, param); // Force locale, no replacements
+i18n.get('en', 'file.obj.key');
+
 i18n.get(param, replacements); // Current locale, with replacements
 i18n.get('file.obj.key', 'username'); // Hello {{username}} -> Hello username
 
@@ -71,8 +74,13 @@ i18n.locale(); // Reactive
 i18n.get(i18n.locale(), 'file.obj.key');
 ```
 
+##### Get current default locale
+```javascript
+i18n.defaultLocale;
+```
+
 Client usage
-========
+================
 ##### `setLocale()` method
 ```javascript
 /*
@@ -149,13 +157,8 @@ i18n.userLocale;
 i18n.currentLocale;
 ```
 
-##### Get current default locale
-```javascript
-i18n.defaultLocale;
-```
-
 Server usage
-========
+================
 __Note:__ Server has no `setLocale()` method
 
 ##### Get value in default language by key
@@ -202,7 +205,8 @@ __Note: wrong key will be omitted__
 i18n.get('de', 'sample.fullName', {first: 'Michael', middle: 'A.', wrong: 'Macht'});
 ```
 
-### Session helpers
+Session helpers
+================
 ```javascript
 Session.get('i18nCurrentLocale'); // Returns current Two-letter localization code
 Session.get('i18nConfig'); // Returns array of configuration objects
@@ -244,4 +248,4 @@ p {{i18n 'sample.fullName' first='Michael' middle='A.' third='Macht'}}
 </template>
 ```
 
-Template helpers `isNotEqual`, `Session` and many more comes from: [ostrio:templatehelpers](https://atmospherejs.com/ostrio/templatehelpers) package
+Template helpers `compare`, `!==`, `Session` and many more comes from: [ostrio:templatehelpers](https://atmospherejs.com/ostrio/templatehelpers) package
