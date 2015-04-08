@@ -90,7 +90,7 @@ if Meteor.isServer
   @property {object} files      - Object with all found files under #path directory
   ###
   i18n.dataTypes = [ "localizations", "config" ]
-  i18n.storageDir = (if (process.env.NODE_ENV is "development") then "/private/i18n" else "/builded/bundle/programs/server/assets/app/i18n")
+  i18n.storageDir = (if (process.env.NODE_ENV is "development") then "/private/i18n" else "/programs/server/assets/app/i18n")
   i18n.path = process.env.PWD + i18n.storageDir
   i18n.files = {}
 
