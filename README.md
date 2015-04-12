@@ -1,4 +1,4 @@
-Reactive i18n and i10n isomorphic service for Meteor
+Reactive i18n and l10n isomorphic service for Meteor
 ========
 File based and reactive internationalization isomorphic driver for Meteor with support of placeholders.
 

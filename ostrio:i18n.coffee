@@ -1,18 +1,17 @@
 ###
-@namespace i18n
-@description initialize global object
+@description initialize global object with initial data
 @global
 ###
 @i18n = 
   ###
   @namespace i18n
-  @property {string}   defaultLocale     - Default application's locale
-  @property {string}   currentLocale     - Locale of current application's state
-  @property {bool}     isReady           - Is everything ready for internalization?
-  @property {bool}     isStarted         - Is internalization service started?
-  @property {object}   l10n              - Object with current localization data
-  @property {object}   config            - Object with internalization configuration data
-  @property {object}   localizations     - Object with all internalization data
+  @property {string}   defaultLocale        - Default application's locale
+  @property {string}   currentLocale        - Locale of current application's state
+  @property {bool}     onWrongKey.returnKey - Return unmatched key to Template or leave it empty
+  @property {bool}     isReady              - Is everything ready for internalization?
+  @property {bool}     isStarted            - Is internalization service started?
+  @property {object}   config               - Object with internalization configuration data
+  @property {constructor} internalizationCollection - MongoDB Collection Object
   ###
   defaultLocale: "en"
   currentLocale:  "en"
@@ -23,11 +22,18 @@
   config: {}
   internalizationCollection: new Meteor.Collection "internalization"
 
+###
+@var {object} _l10n - Object with current localization data
+@var {object} _Localizations - Object with all internalization data
+###
 _l10n = {}
 _Localizations = {}
 
 
 if Meteor.isServer
+  ###
+  @var {object} _SampleData - Object with sample i18n data
+  ###
   _SampleData = 
     de:
       nestedFolder:
@@ -78,20 +84,25 @@ if Meteor.isServer
         route: "i18n/en/"
 
 
+  ###
+  @var {object} fs - FileSystem NPM
+  @var {object} bound - Meteor.bindEnvironment aka Fiber wrapper
+  ###
   fs = Npm.require "fs-extra"
   bound = Meteor.bindEnvironment (callback) ->
     callback()
   
+
   ###
   @namespace i18n
   @property {array}  dataTypes  - Array of file types
-  @property {string} storageDir - Path to current /i18n/ directory, chosen according to environment
-  @property {string} path       - Path to current /i18n/ directory, chosen according to environment
+  @property {string} storageDir - Storage dir /i18n/ directory
+  @property {string} path       - Path to current /i18n/ directory
   @property {object} files      - Object with all found files under #path directory
   ###
   i18n.dataTypes = [ "localizations", "config" ]
-  i18n.storageDir = (if (process.env.NODE_ENV is "development") then "/private/i18n" else "/programs/server/assets/app/i18n")
-  i18n.path = process.env.PWD + i18n.storageDir
+  i18n.storageDir = "/assets/app/i18n"
+  i18n.path = Meteor.rootPath + i18n.storageDir
   i18n.files = {}
 
   if !fs.existsSync "#{i18n.path}/i18n.json"
@@ -134,8 +145,6 @@ if Meteor.isServer
         getConfigFile()
 
 
-
-  
   ###
   @function
   @name onFileChange
@@ -199,17 +208,16 @@ if Meteor.isServer
       type: "config"
 
 
-  
   ###
   @function
   @name pathToObj
   @description Parse provided path into nested object
   @param {string}   path     - Path to valid destination or file on server
   @param {function} callback - Callback function with one parameter - final object prepared from path
-  @callback
+  @callback(localI18n)
   ###
   pathToObj = (path, callback) ->
-    path = path.replace(process.env.PWD, "").replace("#{i18n.storageDir}/", "")
+    path = path.replace("#{i18n.path}/", "")
     path = removeTrailingSlash(path)
     pathArray = path.split("/")
     localI18n = _Localizations
@@ -236,7 +244,7 @@ if Meteor.isServer
   @param {object}   obj      - Object we're working with
   @param {string}   property - Name of new property
   @param {function} callback - Callback function with one parameter - new empty object
-  @callback(object)
+  @callback(obj[property])
   ###
   addProperty = (obj, property, callback) ->
     property = property.replace(".json", "")
@@ -292,8 +300,6 @@ if Meteor.isServer
                   readFile file
 
             callback null, _Localizations  if not --pending and callback
-            
-      
 
 
   ###
@@ -307,7 +313,7 @@ if Meteor.isServer
   ###
   readFile = (file, callback) ->
     localI18n = _Localizations
-    filenames = file.replace(process.env.PWD, "").replace("#{i18n.storageDir}/", "").split("/")
+    filenames = file.replace("#{i18n.path}/", "").split "/"
     i = 0
 
     while i < filenames.length
@@ -345,7 +351,6 @@ if Meteor.isServer
       
 
 
-  
   ###
   @function
   @name getConfigFile
@@ -363,7 +368,6 @@ if Meteor.isServer
         i18n.isReady = true
 
 
-  
   ###
   @function
   @name watchPathChanges
@@ -478,7 +482,7 @@ if Meteor.isServer
   @param {mix}     replacements    - Object, array, or string of replacements
   @param {string}  postfix         - Unique postfix, appended to property string
   
-  @BUG: Dos not returns values on Live-updates without timeout, but if you go by routes
+  @BUG: Does not returns values on Live-updates without timeout, but if you go by routes
   @TODO: Debug bug
   ###
   renderString = (property, replacements, postfix) ->
@@ -520,6 +524,7 @@ if Meteor.isClient
   ###
   Template.registerHelper "i18n", () ->
     i18n.get.apply(this, arguments)
+
   
   ###
   @namespace i18n
@@ -527,6 +532,7 @@ if Meteor.isClient
             Detect user's browser locale
   ###
   i18n.userLocale = (if (Meteor.isClient) then window.navigator.userLanguage or window.navigator.language or navigator.userLanguage else i18n.defaultLocale)
+
   
   ###
   @function
@@ -673,7 +679,7 @@ if Meteor.isClient
   @param    {string}    param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
   @param    {mix}       replacements - Object, array, or string of replacements
   ###
-  i18n.get = () ->
+  i18n.get = ->
     if arguments[0] and arguments[0].indexOf('.') isnt -1
       locale = Session.get "i18nCurrentLocale"
       param = arguments[0]
@@ -709,6 +715,7 @@ if Meteor.isClient
 
     else
       return _l10n["#{locale}.#{param}"]
+
   
   ###
   @function
@@ -746,9 +753,16 @@ if Meteor.isClient
     i18n.isReady = true
     i18n.init @defaultLocale unless i18n.isStarted
 
-
+###
+@function
+@namespace i18n
+@property locale {function}
+@description Get current localization at any environment
+@return {string} - Locale as reactive data source
+###
 i18n.locale = ->
   if Meteor.isServer then @currentLocale else Session.get 'i18nCurrentLocale'
+
 
 ###
 @function
