@@ -673,7 +673,7 @@ if Meteor.isClient
   ###
   i18n.get = ->
     if arguments[0] and arguments[0].indexOf('.') isnt -1
-      locale = @currentLocale
+      locale = Session.get "i18nCurrentLocale"
       param = arguments[0]
       xStart = 1
     else
