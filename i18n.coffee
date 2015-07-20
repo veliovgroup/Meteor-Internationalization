@@ -105,7 +105,7 @@ if Meteor.isServer
   i18n.path = Meteor.rootPath + i18n.storageDir
   i18n.files = {}
 
-  if !fs.existsSync "#{i18n.path}/i18n.json"
+  if not fs.existsSync "#{i18n.path}/i18n.json"
     fs.mkdirsSync "#{i18n.path}/de/nested/folder", 0o0750
     fs.mkdirsSync "#{i18n.path}/en/nested/folder", 0o0750
     fs.writeJSONSync "#{i18n.path}/de/nested/folder/is.json", _SampleData.de.nestedFolder
@@ -138,7 +138,7 @@ if Meteor.isServer
   @param    {string}   path - Path to i18n/ folder on server
   ###
   i18n.init = (path) ->
-    i18n.path = removeTrailingSlash(path)
+    @path = removeTrailingSlash(path)
     fillObjectFromDB ->
       defineReactivities ->
         traverseI18nFiles i18n.path
@@ -321,10 +321,8 @@ if Meteor.isServer
         if filenames[i].indexOf(".json") > 1
           watchPathChanges file
           getFile file, filenames, i, localI18n, (data, prop, index, li18n) ->
-            li18n[prop[index].replace(".json", "")] = JSON.parse(data)
+            li18n[prop[index].replace(".json", "")] = data
             callback(localI18n) if callback
-            
-
         else
           localI18n = localI18n[filenames[i]]
           callback(localI18n) if callback
@@ -343,12 +341,9 @@ if Meteor.isServer
   @callback(data, filenames, index, li18n)
   ###
   getFile = (file, filenames, index, li18n, callback) ->
-    fs.readFile file,
+    data = fs.readJsonSync file,
       encoding: "utf8"
-    , (err, data) ->
-        throw err  if err
-        callback data, filenames, index, li18n
-      
+    callback data, filenames, index, li18n
 
 
   ###
@@ -359,13 +354,11 @@ if Meteor.isServer
   ###
   getConfigFile = ->
     watchPathChanges "#{i18n.path}/i18n.json"
-    fs.readFile "#{i18n.path}/i18n.json",
+    data = fs.readJsonSync "#{i18n.path}/i18n.json",
       encoding: "utf8"
-    , (err, data) ->
-        throw err  if err
-        i18n.config = JSON.parse(data)
-        i18n.isStarted = true
-        i18n.isReady = true
+    i18n.config = data
+    i18n.isStarted = true
+    i18n.isReady = true
 
 
   ###
@@ -413,7 +406,7 @@ if Meteor.isServer
         xStart = 2
 
       if locale and param
-        if arguments.length is xStart + 1 and (!arguments[xStart + 2] or _.isFunction(arguments[xStart + 2]))
+        if arguments.length is xStart + 1 and (not arguments[xStart + 2] or _.isFunction(arguments[xStart + 2]))
           
           if _.isFunction arguments[xStart]
             cb = arguments[xStart]
@@ -433,7 +426,7 @@ if Meteor.isServer
         splitted = param.split '.'
 
         deepen = (obj, keypath, index=0)->
-          if obj && keypath[index]
+          if obj and keypath[index]
             key = keypath[index]
             if obj[key]
               value = obj[key]
@@ -447,7 +440,7 @@ if Meteor.isServer
         if replacements and (_.isObject(replacements) or _.isString(replacements) or _.isArray(replacements))
           postfix = SHA256 param + JSON.stringify(replacements)
 
-          if !_l10n["#{locale}.#{param}#{postfix}"]
+          if not _l10n["#{locale}.#{param}#{postfix}"]
             renderString param, replacements, postfix
           
           cb null, true if cb
@@ -466,8 +459,8 @@ if Meteor.isServer
       Meteor.wrapAsync((params, cb)->
         ticker = Meteor.setTimeout (->
           params = _.values(params)
-          params.push(cb)
-          i18n.get.apply this, params
+          params.push cb
+          i18n.get.apply i18n, params
           Meteor.clearInterval ticker
         ), 250
       )(arguments)
@@ -510,8 +503,6 @@ if Meteor.isServer
                with default path to i18n/ folder
   ###
   i18n.init i18n.path
-  
-
 
 ###
 # CLIENT SIDE
@@ -523,7 +514,7 @@ if Meteor.isClient
   @example {{i18n 'string'}}
   ###
   Template.registerHelper "i18n", () ->
-    i18n.get.apply(this, arguments)
+    i18n.get.apply i18n, arguments
 
   
   ###
@@ -573,9 +564,9 @@ if Meteor.isClient
   @param {mix}     value    - New property's value
   ###
   defineReactiveProperyWrapper = (obj, key, value) ->
-    if !_.has obj, key
+    if not _.has obj, key
       Object.defineReactiveProperty obj, key, value, ((property, value, object) ->
-        _Strings[property] = value if !_.has _Strings, property
+        _Strings[property] = value if not _.has _Strings, property
       ), ((property) ->
         return _Strings[property] if _.has _Strings, property
       ), (property, value) ->
@@ -601,26 +592,26 @@ if Meteor.isClient
   @param {string} locale - Two letter locale code
   ###
   i18n.setLocale = (locale) ->
-    if i18n.isStarted
+    if @isStarted
       if _Localizations[locale]
-        i18n.currentLocale = locale
+        @currentLocale = locale
         Meteor.storage.set "locale", locale
         Session.set "i18nCurrentLocale", locale
         i18nConfigArray = []
         for key of _Localizations
           i18nConfigArray.push
             name: key
-            value: i18n.config[key]
-            currentLocale: Session.get "i18nCurrentLocale"
+            value: @config[key]
+            currentLocale: locale
         Session.set "i18nConfig", i18nConfigArray
-      else if _Localizations[i18n.config.defaultLocale]
-        i18n.setLocale i18n.config.defaultLocale
+      else if _Localizations[@config.defaultLocale]
+        @setLocale @config.defaultLocale
       else
         throwError 404, locale
     else
-      i18n.init locale
+      @init locale
 
-    i18n.currentLocale
+    @currentLocale
 
   
   ###
@@ -631,24 +622,25 @@ if Meteor.isClient
   @param {string} defaultLocale - Two letter locale code
   ###
   i18n.init = (defaultLocale) ->
-    if i18n.isReady and not i18n.isStarted
-      userLocale = i18n.userLocale.split("-")[0]
+    if @isReady and not @isStarted
+      userLocale = @userLocale.split("-")[0]
       loadConfig()
       loadLocalizations()
 
-      if defaultLocale and i18n.config[defaultLocale]
-        i18n.defaultLocale = defaultLocale
-      else if i18n.config.defaultLocale
-        i18n.defaultLocale = i18n.config.defaultLocale
+      if defaultLocale and @config[defaultLocale]
+        @defaultLocale = defaultLocale
+      else if @config.defaultLocale
+        @defaultLocale = @config.defaultLocale
       else
         throwError 404, defaultLocale
 
-      Meteor.storage.set "locale", (if (Meteor.storage.get("locale")) then Meteor.storage.get("locale") else (if (i18n.config[userLocale]) then userLocale else i18n.defaultLocale))
-      i18n.isStarted = true
-      i18n.setLocale Meteor.storage.get("locale")
-    else unless i18n.isReady
+      Meteor.storage.set "locale", (if (Meteor.storage.get("locale")) then Meteor.storage.get("locale") else (if (@config[userLocale]) then userLocale else @defaultLocale))
+      @isStarted = true
+      @setLocale Meteor.storage.get("locale")
+    else unless @isReady
+      self = @
       Meteor.setTimeout (->
-        i18n.init defaultLocale
+        self.init defaultLocale
       ), 250
 
   
@@ -681,13 +673,15 @@ if Meteor.isClient
   ###
   i18n.get = ->
     if arguments[0] and arguments[0].indexOf('.') isnt -1
-      locale = Session.get "i18nCurrentLocale"
+      locale = @currentLocale
       param = arguments[0]
       xStart = 1
     else
       locale = arguments[0]
       param = arguments[1]
       xStart = 2
+    
+    return (if @onWrongKey.returnKey then param else "") if not _.has _l10n, "#{locale}.#{param}"
 
     if arguments.length is xStart + 1
       if arguments[xStart].hash
@@ -699,17 +693,14 @@ if Meteor.isClient
       replacements = []
       while arguments.length >= x + 1
         if arguments[x] instanceof Spacebars.kw
-          replacements = arguments[x].hash if !_.isEmpty(arguments[x].hash)
+          replacements = arguments[x].hash if not _.isEmpty arguments[x].hash
         else
           replacements.push arguments[x]
         x++
         
-    if !_.has _l10n, "#{locale}.#{param}"
-      return if i18n.onWrongKey.returnKey then param else ""
-
-    else if replacements and !_.isEmpty replacements
+    if replacements and not _.isEmpty replacements
       postfix = SHA256 param + JSON.stringify replacements
-      if !_.has _Strings, "#{locale}.#{param}#{postfix}"
+      if not _.has _Strings, "#{locale}.#{param}#{postfix}"
         renderString param, replacements, postfix
       return _l10n["#{locale}.#{param}#{postfix}"]
 

@@ -14,5 +14,3 @@ Meteor.startup ->
         fields:
           value: 1
           type: 1
-
-  Meteor.subscribe "i18n" if Meteor.isClient

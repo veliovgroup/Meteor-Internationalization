@@ -214,14 +214,14 @@ Session.get('i18nConfig'); // Returns array of configuration objects
 
 Template helpers
 ================
-`i18n` - accepts param and replacements:
+`i18n` - accepts key and replacements:
 ```jade
 p {{i18n 'sample.hello'}}
 p {{{i18n 'sample.html'}}}
 p {{i18n 'sample.fullName'}}
-p {{i18n 'sample.fullName', 'Michael' 'A.' 'Macht'}}
-p {{i18n 'en' 'sample.fullName', 'Michael' 'A.' 'Macht'}}
-p {{i18n 'de' 'sample.fullName', first='Michael' middle='A.' last='Macht'}}
+p {{i18n 'sample.fullName' 'Michael' 'A.' 'Macht'}}
+p {{i18n 'en' 'sample.fullName' 'Michael' 'A.' 'Macht'}}
+p {{i18n 'de' 'sample.fullName' first='Michael' middle='A.' last='Macht'}}
 p {{i18n 'sample.fullName' first='Michael' middle='A.' last='Macht'}}
 p {{i18n 'sample.fullName' first='Michael' middle='A.' third='Macht'}}
 ```
