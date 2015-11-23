@@ -1,785 +1,326 @@
-###
-@description initialize global object with initial data
-@global
-###
-@i18n = 
-  ###
-  @namespace i18n
-  @property {string}   defaultLocale        - Default application's locale
-  @property {string}   currentLocale        - Locale of current application's state
-  @property {bool}     onWrongKey.returnKey - Return unmatched key to Template or leave it empty
-  @property {bool}     isReady              - Is everything ready for internalization?
-  @property {bool}     isStarted            - Is internalization service started?
-  @property {object}   config               - Object with internalization configuration data
-  @property {constructor} internalizationCollection - MongoDB Collection Object
-  ###
-  defaultLocale: "en"
-  currentLocale:  "en"
-  onWrongKey:
-    returnKey: true
-  isReady: false
-  isStarted: false
-  config: {}
-  internalizationCollection: new Meteor.Collection "internalization"
-
-###
-@var {object} _l10n - Object with current localization data
-@var {object} _Localizations - Object with all internalization data
-###
-_l10n = {}
-_Localizations = {}
-
+#################
+# Helpers
+# Local scope
+#################
 
 if Meteor.isServer
-  ###
-  @var {object} _SampleData - Object with sample i18n data
-  ###
-  _SampleData = 
-    de:
-      nestedFolder:
-        support:
-          nested:
-            objects: "zu"
-
-      sample:
-        hello: "Hallo"
-        userHello: "Hallo {{name}}!"
-        fullName: "Vollständige Name des Benutzers ist: {{first}} {{middle}} {{last}}"
-        html: "<b>Fettdruck</b>"
-        nested:
-          objects:
-            might:
-              be:
-                very: "tief"
-
-    en:
-      nestedFolder:
-        support:
-          nested:
-            objects: "too"
-
-      sample:
-        hello: "Hello"
-        userHello: "Hi {{name}}!"
-        fullName: "User's full name is: {{first}} {{middle}} {{last}}"
-        html: "<b>Bold text</b>"
-        nested:
-          objects:
-            might:
-              be:
-                very: "deep"
-
-    i18nConfig:
-      defaultLocale: "en"
-      de:
-        code: "de"
-        isoCode: "de_DE"
-        name: "Deutsch"
-        route: "i18n/de/"
-
-      en:
-        code: "en"
-        isoCode: "en_US"
-        name: "English"
-        route: "i18n/en/"
-
-
-  ###
-  @var {object} fs - FileSystem NPM
-  @var {object} bound - Meteor.bindEnvironment aka Fiber wrapper
-  ###
-  fs = Npm.require "fs-extra"
-  bound = Meteor.bindEnvironment (callback) ->
-    callback()
-  
-
-  ###
-  @namespace i18n
-  @property {array}  dataTypes  - Array of file types
-  @property {string} storageDir - Storage dir /i18n/ directory
-  @property {string} path       - Path to current /i18n/ directory
-  @property {object} files      - Object with all found files under #path directory
-  ###
-  i18n.dataTypes = [ "localizations", "config" ]
-  i18n.storageDir = "/assets/app/i18n"
-  i18n.path = Meteor.rootPath + i18n.storageDir
-  i18n.files = {}
-
-  if not fs.existsSync "#{i18n.path}/i18n.json"
-    fs.mkdirsSync "#{i18n.path}/de/nested/folder", 0o0750
-    fs.mkdirsSync "#{i18n.path}/en/nested/folder", 0o0750
-    fs.writeJSONSync "#{i18n.path}/de/nested/folder/is.json", _SampleData.de.nestedFolder
-    fs.writeJSONSync "#{i18n.path}/en/nested/folder/is.json", _SampleData.en.nestedFolder
-    fs.writeJSONSync "#{i18n.path}/de/sample.json", _SampleData.de.sample
-    fs.writeJSONSync "#{i18n.path}/en/sample.json", _SampleData.en.sample
-    fs.writeJSONSync "#{i18n.path}/i18n.json", _SampleData.i18nConfig
-
-  
-  ###
-  @namespace i18n
-  @property {constructor} internalizationCollection - MongoDB Collection Object
-  @constructor
-  ###
-  i18n.internalizationCollection.deny
-    insert: ->
-      true
-
-    update: ->
-      true
-
-    remove: ->
-      true
-
-  
-  ###
-  @function
-  @namespace i18n
-  @property {function} init - Run core functions continuous order
-  @param    {string}   path - Path to i18n/ folder on server
-  ###
-  i18n.init = (path) ->
-    @path = removeTrailingSlash(path)
-    fillObjectFromDB ->
-      defineReactivities ->
-        traverseI18nFiles i18n.path
-        getConfigFile()
-
-
-  ###
-  @function
-  @name onFileChange
-  @description Run update functions in continuous order
-  ###
-  onFileChange = (file) ->
-    getConfigFile()
-    readFile file
-
-  
-  ###
-  @function
-  @name defineReactivities
-  @description set defineReactiveProperty() on each
-               property from i18n.dataTypes array
-  @param {function} callback - Callback function
-  ###
-  defineReactivities = (callback) ->
-    i18n.dataTypes.forEach (data) ->
-      Object.defineReactiveProperty i18n, data, {}, null, null, ->
-        bound ->
-          updateRecords()
-
-    callback() if callback
-
-  
-  ###
-  @function
-  @name fillObjectFromDB
-  @description check DB records and fill initial object with it  
-  @param {function} callback - Callback function
-  ###
-  fillObjectFromDB = (callback) ->
-    i18n.dataTypes.forEach (data) ->
-      row = i18n.internalizationCollection.findOne(type: data)
-      if row and JSON.stringify(row.value) isnt JSON.stringify(i18n[data])
-        i18n[data] = row.value
-        i18n[data]._id = row._id
-
-    callback() if callback
-
-  
-  ###
-  @function
-  @name updateRecords
-  @description check DB records and fill initial object with it
-  @param {object} selector - MongoDB selector object
-  @param {mix}    value    - Value to write into MongoDB
-  ###
-  updateRecords = ->
-    i18n.internalizationCollection.upsert
-      type: "localizations"
-    ,
-      value: _Localizations
-      type: "localizations"
-
-    i18n.internalizationCollection.upsert
-      type: "config"
-    ,
-      value: i18n.config
-      type: "config"
-
-
-  ###
-  @function
-  @name pathToObj
-  @description Parse provided path into nested object
-  @param {string}   path     - Path to valid destination or file on server
-  @param {function} callback - Callback function with one parameter - final object prepared from path
-  @callback(localI18n)
-  ###
-  pathToObj = (path, callback) ->
-    path = path.replace("#{i18n.path}/", "")
-    path = removeTrailingSlash(path)
-    pathArray = path.split("/")
-    localI18n = _Localizations
-    i = 0
-
-    while i < pathArray.length
-      if pathArray[i].indexOf(".") is -1
-        unless localI18n[pathArray[i]]
-          addProperty localI18n, pathArray[i], (res) ->
-            localI18n = res
-            addProperty localI18n, pathArray[i + 1]  if i + 1 < pathArray.length
-          
-        else
-          localI18n = localI18n[pathArray[i]]
-          addProperty localI18n, pathArray[i + 1]  if i + 1 < pathArray.length
-      i++
-    callback(localI18n) if callback
-
-  
-  ###
-  @function
-  @name addProperty
-  @description Create new property and assign empty object to it
-  @param {object}   obj      - Object we're working with
-  @param {string}   property - Name of new property
-  @param {function} callback - Callback function with one parameter - new empty object
-  @callback(obj[property])
-  ###
-  addProperty = (obj, property, callback) ->
-    property = property.replace(".json", "")
-    unless obj[property]
-      obj[property] = {}
-      Object.defineReactiveProperty obj, property, {}, null, null, ->
-        bound ->
-          updateRecords()
-
-    callback(obj[property]) if callback
-
-  
-  ###
-  @function
-  @name removeTrailingSlash
-  @description Removes trailing Slash from string if its exists
-  @param {string} string - String
-  ###
-  removeTrailingSlash = (string) ->
-    if string.substr(-1) is "/"
-      string.substr 0, string.length - 1
-    else
-      string
-
-  
-  ###
-  @function
-  @name traverseI18nFiles
-  @description Walk thought all i18n files
-               and store 'em into variable
-  @param {string}   path     - Path we are working in
-  @param {function} callback - Callback function with two parameters - error, final object
-  @callback(error, object)
-  ###
-  traverseI18nFiles = (path, callback) ->
-    fs.readdir path, (err, list) ->
-      
-        return callback(err) if err and callback
-        pending = list.length
-        return callback(null, _Localizations)  if not pending and callback
-
-        list.forEach (file) ->
-          file = "#{path}/#{file}"
-
-          fs.stat file, (err, stat) ->
-            if stat and stat.isDirectory()
-              pathToObj file, ->
-                traverseI18nFiles file, ->
-                  callback null, _Localizations  if not --pending and callback
-            else
-              if file.indexOf(".json") isnt -1
-                pathToObj file, ->
-                  readFile file
-
-            callback null, _Localizations  if not --pending and callback
-
-
-  ###
-  @function
-  @name readFile
-  @description Read file and add it's contents
-               into localI18n variable which linked to _Localizations object
-  @param {string}   file     - Path to existing file
-  @param {function} callback - Callback function with one parameter - localI18n - the last object we write to
-  @callback(error, object)
-  ###
-  readFile = (file, callback) ->
-    localI18n = _Localizations
-    filenames = file.replace("#{i18n.path}/", "").split "/"
-    i = 0
-
-    while i < filenames.length
-      if filenames[i] isnt "i18n.json"
-        if filenames[i].indexOf(".json") > 1
-          watchPathChanges file
-          getFile file, filenames, i, localI18n, (data, prop, index, li18n) ->
-            li18n[prop[index].replace(".json", "")] = data
-            callback(localI18n) if callback
-        else
-          localI18n = localI18n[filenames[i]]
-          callback(localI18n) if callback
-      i++
-
-  
-  ###
-  @function
-  @name getFile
-  @description Read file and callback it's data
-  @param {string} file       - Full path to file on server
-  @param {array}  filenames  - Array of folders names
-  @param {number} index      - Index of working directory from Filenames Array
-  @param {object} li18n      - Linked object to _Localizations property
-  @param {function} callback - Callback function with four parameters - file contents, filenames, index, li18n
-  @callback(data, filenames, index, li18n)
-  ###
-  getFile = (file, filenames, index, li18n, callback) ->
-    data = fs.readJsonSync file,
-      encoding: "utf8"
-    callback data, filenames, index, li18n
-
-
-  ###
-  @function
-  @name getConfigFile
-  @description Read /i18n.json file contents,
-               store it in variable and set watcher on it
-  ###
-  getConfigFile = ->
-    watchPathChanges "#{i18n.path}/i18n.json"
-    data = fs.readJsonSync "#{i18n.path}/i18n.json",
-      encoding: "utf8"
-    i18n.config = data
-    i18n.isStarted = true
-    i18n.isReady = true
-
-
-  ###
-  @function
-  @name watchPathChanges
-  @description Correctly setting watcher on files or directories
-               If watcher already is set - remove it
-               If watcher is not set - set it and store fs.FSWatcher
-  @param {string} path - Full path to file or folder on server
-  ###
-  watchPathChanges = (path) ->
-    unless i18n.files[path]
-      i18n.files[path] = {}
-      i18n.files[path].onWatch = false
-    if i18n.files[path].onWatch is false
-      i18n.files[path].onWatch = true
-      i18n.files[path].watcher = fs.watch path, ->
-        onFileChange path
-    else
-      if i18n.files[path].watcher
-        i18n.files[path].watcher.close()
-        i18n.files[path].watcher = null
-        i18n.files[path].onWatch = false
-        watchPathChanges path
-
-
-  ###
-  @function
-  @namespace i18n
-  @property {function} get          - Get values, and do pattern replaces from current localization
-  @param    {string}   locale       - Two-letter localization code
-  @param    {string}   param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
-  @param    {mix}      replacements - Object, array, or string of replacements
-  ###
-  i18n.get = () ->
-    if i18n.isReady and i18n.isStarted
-
-      if arguments[0] and arguments[0].indexOf('.') isnt -1
-        locale = @currentLocale or @defaultLocale
-        param = arguments[0]
-        xStart = 1
-      else
-        locale = arguments[0]
-        param = arguments[1]
-        xStart = 2
-
-      if locale and param
-        if arguments.length is xStart + 1 and (not arguments[xStart + 2] or _.isFunction(arguments[xStart + 2]))
-          
-          if _.isFunction arguments[xStart]
-            cb = arguments[xStart]
-          else
-            replacements = arguments[xStart]
-
-        else if arguments.length >= xStart + 1
-          x = xStart
-          replacements = []
-          while arguments.length >= x + 1
-            if _.isFunction arguments[x]
-              cb = arguments[x]
-            else
-              replacements.push arguments[x]
-            x++
-
-        splitted = param.split '.'
-
-        deepen = (obj, keypath, index=0)->
-          if obj and keypath[index]
-            key = keypath[index]
-            if obj[key]
-              value = obj[key]
-              if _.isObject(value) then deepen value, keypath, index + 1 else value
-            else
-              return if i18n.onWrongKey.returnKey then param else ""
-          else
-             return if i18n.onWrongKey.returnKey then param else ""
-
-        _l10n["#{locale}.#{param}"] = deepen _Localizations[locale], splitted
-        if replacements and (_.isObject(replacements) or _.isString(replacements) or _.isArray(replacements))
-          postfix = SHA256 param + JSON.stringify(replacements)
-
-          if not _l10n["#{locale}.#{param}#{postfix}"]
-            renderString param, replacements, postfix
-          
-          cb null, true if cb
-          return _l10n["#{locale}.#{param}#{postfix}"]
-
-        else
-          cb null, true if cb
-          return _l10n["#{locale}.#{param}"]
-
-      else
-        cb null, true if cb
-        return ''
-
-    else unless i18n.isReady
-      ticker = ''
-      Meteor.wrapAsync((params, cb)->
-        ticker = Meteor.setTimeout (->
-          params = _.values(params)
-          params.push cb
-          i18n.get.apply i18n, params
-          Meteor.clearInterval ticker
-        ), 250
-      )(arguments)
-      return _l10n["#{locale}.#{param}"] or ''
-
-  ###
-  @function
-  @name renderString
-  @description Render string - replace Handlebars placeholders by values
-  
-  @param {string}  property        - Name of property in _l10n object
-  @param {mix}     replacements    - Object, array, or string of replacements
-  @param {string}  postfix         - Unique postfix, appended to property string
-  
-  @BUG: Does not returns values on Live-updates without timeout, but if you go by routes
-  @TODO: Debug bug
-  ###
-  renderString = (property, replacements, postfix) ->
-    for key of i18n.config
-      if _.isObject i18n.config[key]
-        rendered = _l10n["#{i18n.config[key].code}.#{property}"]
-        if rendered
-          matches = rendered.match(/\{{(.*?)\}}/g)
-          if matches and replacements
-            if _.isString replacements
-              i = matches.length - 1
-              while i >= 0
-                rendered = rendered.replace matches[i], replacements
-                i--
-            else
-              i = matches.length - 1
-              while i >= 0
-                rendered = renderReplace rendered, replacements, matches, i
-                i--
-          _l10n["#{i18n.config[key].code}.#{property}#{postfix}"] = rendered
-
-  
-  ###
-  @description Run i18n.init() function
-               with default path to i18n/ folder
-  ###
-  i18n.init i18n.path
+  fs    = Npm.require "fs-extra"
+  bound = Meteor.bindEnvironment (callback) -> callback()
 
 ###
-# CLIENT SIDE
+@locus Anywhere
+@name  hashCode
+@description Fast lightweight non-cryptographic hash function
 ###
-if Meteor.isClient
-  _Strings = {}
-  ###
-  @description i18n helper UI Spacebars helper
-  @example {{i18n 'string'}}
-  ###
-  Template.registerHelper "i18n", () ->
-    i18n.get.apply i18n, arguments
+hashCode = (s) ->
+  s.split('').reduce ((a, b) ->
+    a = (a << 5) - a + b.charCodeAt(0)
+    a & a
+  ), 0
 
-  
-  ###
-  @namespace i18n
-  @property {string} userLocale - User's browser locale
-            Detect user's browser locale
-  ###
-  i18n.userLocale = (if (Meteor.isClient) then window.navigator.userLanguage or window.navigator.language or navigator.userLanguage else i18n.defaultLocale)
+###
+@locus Anywhere
+@name  toDottedString
+@description Convert object nested keys into dotted string
+###
+toDottedString = (obj, prepend = 'i18n') ->
+  check obj, Object
+  check prepend, String
 
-  
-  ###
-  @function
-  @name loadLocalizations
-  @description Load localization files into _Localizations property
-  @param {string} locale - Two letter locale code
-  ###
-  loadLocalizations = (locale) ->
-    _Localizations = i18n.internalizationCollection.findOne(type: "localizations").value
-    reactivateObject _Localizations
-    _Localizations[locale] if locale
+  final = {}
+  for key, value of obj
+    if _.isString value
+      final[prepend + '.' + key] = value
+    else
+      final = _.extend final, toDottedString value, prepend + '.' + key
+  return final
 
-  
-  ###
-  @function
-  @name reactivateObject
-  @description Check if properties of multidimensional object is reactive,
-               if it is not - define reactive property on it
-  @param {object} object - Object we're working on
-  @param {parent} string - Parent object property
-  ###
-  reactivateObject = (object, parent) ->
-    unless object.isReactive
-      for key of object
-        if key isnt "isReactive"
-          if Object::toString.call(object[key]) is "[object Object]"
-            reactivateObject object[key], (if (parent) then "#{parent}.#{key}" else key)
+###
+@locus Anywhere
+@name  proceedPlaceholders
+@description Replace placeholders with replacements in l10n strings
+###
+proceedPlaceholders = (string, replacements) ->
+  check string, Match.Optional String
+
+  if string
+    for replacement in replacements
+      if _.isObject replacement?.hash
+        for key, value of replacement.hash
+          string = string.replace new RegExp("\{\{(\s)*(#{key})+(\s)*\}\}", 'i'), value
+      else if _.isObject replacement
+        for key, value of replacement
+          string = string.replace new RegExp("\{\{(\s)*(#{key})+(\s)*\}\}", 'i'), value
+      else
+        string = string.replace new RegExp('\{\{(\s)*([A-z])+(\s)*\}\}', 'i'), replacement
+  return string
+
+###
+@locus Anywhere
+@name  getI18nFiles
+@description Scan i18n directory for l10n files
+###
+getI18nFiles = (path) ->
+  check path, String
+
+  _self = @
+  fs.readdir path, (err, list) ->
+    if list
+      list.forEach (file) ->
+        file = "#{path}#{file}"
+
+        fs.stat file, (err, stat) -> bound ->
+          if stat and stat.isDirectory()
+            getI18nFiles.call _self, file
           else
-            defineReactiveProperyWrapper _l10n, "#{parent}.#{key}", object[key]
+            if !!~file.indexOf '.json'
+              fcont = fs.readJsonSync file
+              for skey, svalue of toDottedString fcont, file.replace('.json', '').replace(_self.path + '/', '').replace(/\/\//g, '.').replace(/\//g, '.')
+                _self.collection.upsert {key: skey}, {value: svalue, key: skey}
 
-  
-  ###
-  @function
-  @name defineReactiveProperyWrapper
-  @description Wrapper for quick Object.defineReactiveProperty() function.
-  @param {object}  obj      - Object we're working on
-  @param {string}  key      - Property name
-  @param {mix}     value    - New property's value
-  ###
-  defineReactiveProperyWrapper = (obj, key, value) ->
-    if not _.has obj, key
-      Object.defineReactiveProperty obj, key, value, ((property, value, object) ->
-        _Strings[property] = value if not _.has _Strings, property
-      ), ((property) ->
-        return _Strings[property] if _.has _Strings, property
-      ), (property, value) ->
-        _Strings[property] = value
 
-  
+class I18N
   ###
-  @function
-  @name loadConfig
-  @description Load configuration object into i18n.config property
+  @locus Anywhere
+  @class I18N
+  @constructor 
+  @description Initialize I18N object with `config`
+  @param config                    {Object}
+  @param config.path               {String}  - Path to `i18n` folder
+  @param config.returnKey          {Boolean} - Return key if l10n value not found
+  @param config.collectionName     {String}  - i18n Collection name
+  @param config.helperName         {String}  - Template helper name
+  @param config.helperSettingsName {String}  - Settings helper name
+  @param config.allowPublishAll    {Boolean} - Allow publish full i18n set to client
   ###
-  loadConfig = ->
-    i18n.config = i18n.internalizationCollection.findOne(type: "config").value
-    i18n.config
+  constructor: (config = {}) ->
+    check config, Object
 
-  
-  ###
-  @function
-  @namespace i18n
-  @property {function} setLocale - Set locale (by ISO code)
-  @description Set new locale if it is configured in /private/i18n/i18n.json config file.
-               Update session's and localStorage or cookie (via Meteor.storage) dependencies
-  @param {string} locale - Two letter locale code
-  ###
-  i18n.setLocale = (locale) ->
-    if @isStarted
-      if _Localizations[locale]
-        @currentLocale = locale
-        Meteor.storage.set "locale", locale
-        Session.set "i18nCurrentLocale", locale
-        i18nConfigArray = []
-        for key of _Localizations
-          i18nConfigArray.push
-            name: key
-            value: @config[key]
-            currentLocale: locale
-        Session.set "i18nConfig", i18nConfigArray
-      else if _Localizations[@config.defaultLocale]
-        @setLocale @config.defaultLocale
-      else
-        throwError 404, locale
-    else
-      @init locale
+    _self               = @
+    @returnKey          = config.returnKey or true
+    @helperName         = config.helperName or 'i18n'
+    @collectionName     = config.collectionName or "internalization"
+    @allowPublishAll    = config.allowPublishAll or true
+    @helperSettingsName = config.helperName or 'i18nSettings'
+    @path               = config.path or '/assets/app/i18n'
 
-    @currentLocale
+    check @returnKey, Boolean
+    check @helperName, String
+    check @collectionName, String
+    check @allowPublishAll, Boolean
+    check @helperSettingsName, String
 
-  
-  ###
-  @function
-  @namespace i18n
-  @property {function} init - Set default locale (by ISO code)
-  @description Set default locale and initialize internalization service
-  @param {string} defaultLocale - Two letter locale code
-  ###
-  i18n.init = (defaultLocale) ->
-    if @isReady and not @isStarted
-      userLocale = @userLocale.split("-")[0]
-      loadConfig()
-      loadLocalizations()
+    @collection         = new Meteor.Collection @collectionName
+    @currentLocale       = new ReactiveVar undefined
 
-      if defaultLocale and @config[defaultLocale]
-        @defaultLocale = defaultLocale
-      else if @config.defaultLocale
-        @defaultLocale = @config.defaultLocale
-      else
-        throwError 404, defaultLocale
+    if Meteor.isClient
+      @strings        = {}
+      @subscribedKeys = new ReactiveVar ['__settings.defaultLocale', '__settings.__langSet__', '__settings.__langConfig__']
+      @strings[key]   = new ReactiveVar([]) for key in ['__settings.__langSet__', '__settings.__langConfig__']
+      ###
+      @description Main `i18n` template helper
+      ###
+      Template.registerHelper @helperName, => 
+        args = Array.prototype.slice.call arguments
+        args.push true
+        @get.apply @, args
 
-      Meteor.storage.set "locale", (if (Meteor.storage.get("locale")) then Meteor.storage.get("locale") else (if (@config[userLocale]) then userLocale else @defaultLocale))
-      @isStarted = true
-      @setLocale Meteor.storage.get("locale")
-    else unless @isReady
-      self = @
-      Meteor.setTimeout (->
-        self.init defaultLocale
-      ), 250
+      ###
+      @description Settings `i18n` template helper, might be used to build language switcher (see demo folder).
+      ###
+      Template.registerHelper @helperSettingsName, => @getSetting.apply @, arguments
 
-  
-  ###
-  @function
-  @name throwError
-  @description Trow templated errors
-  
-  @param {string|int}  code    - Error code, similar to http codes
-  @param {string}      string  - Additional string to be inserted into error messages
-  ###
-  throwError = (code, string) ->
-    switch code
-      when 404
-        text = "No locale \"#{string}\" is definded in /private/i18n/i18n.json config file"
-        description = "Check /private/i18n/i18n.json file for \"#{string}\" locale."
-      else
-        text = "Something is goes wrong in /packages/ostrio:i18n/ostrio:i18n.js"
-        description = "Please check /packages/ostrio:i18n/ostrio:i18n.js for errors"
-    throw new Meteor.Error([ code ], text, description)
-
-  
-  ###
-  @function
-  @namespace i18n
-  @property {function}  get          - Get values, and do pattern replaces from current localization
-  @param    {string}    locale       - [OPTIONAL] Two-letter localization code
-  @param    {string}    param        - string in form of dot notation, like: folder1.folder2.file.key.key.key... etc.
-  @param    {mix}       replacements - Object, array, or string of replacements
-  ###
-  i18n.get = ->
-    if arguments[0] and arguments[0].indexOf('.') isnt -1
-      locale = Session.get "i18nCurrentLocale"
-      param = arguments[0]
-      xStart = 1
-    else
-      locale = arguments[0]
-      param = arguments[1]
-      xStart = 2
-    
-    return (if @onWrongKey.returnKey then param else "") if not _.has _l10n, "#{locale}.#{param}"
-
-    if arguments.length is xStart + 1
-      if arguments[xStart].hash
-        replacements = arguments[xStart].hash
-      else
-        replacements = arguments[xStart]
-    else if arguments.length > xStart + 1
-      x = xStart
-      replacements = []
-      while arguments.length >= x + 1
-        if arguments[x] instanceof Spacebars.kw
-          replacements = arguments[x].hash if not _.isEmpty arguments[x].hash
-        else
-          replacements.push arguments[x]
-        x++
+      Meteor.subscribe '___i18n___', @subscribedKeys.get(), ->
+        for key in _self.subscribedKeys.get()
+          _self.strings[key] = new ReactiveVar(if _self.returnKey then key else '') unless _self.strings?[key]
+          _self.strings[key].set _self.collection.findOne({key})?.value
         
-    if replacements and not _.isEmpty replacements
-      postfix = SHA256 param + JSON.stringify replacements
-      if not _.has _Strings, "#{locale}.#{param}#{postfix}"
-        renderString param, replacements, postfix
-      return _l10n["#{locale}.#{param}#{postfix}"]
+        _self.defaultLocale = _self.collection.findOne({key: '__settings.defaultLocale'})?.value
 
-    else
-      return _l10n["#{locale}.#{param}"]
+        unless _self.currentLocale.get()
+          unless ClientStorage.get "___i18n.locale___"
+            for lang in _self.collection.findOne({key: '__settings.__langConfig__'})?.value or []
+              if lang.code is _self.userLocale
+                _self.currentLocale.set lang.code
+                ClientStorage.set "___i18n.locale___", lang.code
+              if lang.isoCode is _self.userLocale
+                _self.currentLocale.set lang.isoCode.substring 0, 2
+                ClientStorage.set "___i18n.locale___", lang.isoCode.substring 0, 2
 
-  
-  ###
-  @function
-  @name renderString
-  @description Render string - replace Handlebars placeholders by values
-  
-  @param {string}  property        - Name of property in _l10n object
-  @param {mix}     replacements    - Object, array, or string of replacements
-  @param {string}  postfix         - Unique postfix, appended to property string
-  
-  @BUG: Does not returns values on Live-updates without timeout, but if you go by routes
-  @TODO: Debug bug
-  ###
-  renderString = (property, replacements, postfix) ->
-    for key of i18n.config
-      if _.isObject i18n.config[key]
-        rendered = _l10n["#{i18n.config[key].code}.#{property}"]
-        if rendered
-          matches = rendered.match(/\{{(.*?)\}}/g)
-          if matches and replacements
-            if _.isString replacements
-              rendered = rendered.replace matches[0], replacements
+            _self.currentLocale.set _self.defaultLocale
+            ClientStorage.set "___i18n.locale___", _self.defaultLocale
+          else
+            if !!~(_self.collection.findOne({key: '__settings.__langSet__'})?.value or []).indexOf ClientStorage.get "___i18n.locale___"
+              _self.currentLocale.set ClientStorage.get "___i18n.locale___"
             else
-              i = matches.length - 1
-              while i >= 0
-                rendered = renderReplace rendered, replacements, matches, i
-                i--
-          defineReactiveProperyWrapper _l10n, "#{i18n.config[key].code}.#{property}#{postfix}", rendered
+              _self.currentLocale.set _self.defaultLocale
+              ClientStorage.set "___i18n.locale___", _self.defaultLocale
 
-  
-  ###
-  @description Subscribe to i18n collection, call i18n.init on connection callback
-  ###
-  Meteor.subscribe "i18n", ->
-    i18n.isReady = true
-    i18n.init @defaultLocale unless i18n.isStarted
-
-###
-@function
-@namespace i18n
-@property locale {function}
-@description Get current localization at any environment
-@return {string} - Locale as reactive data source
-###
-i18n.locale = ->
-  if Meteor.isServer then @currentLocale else Session.get 'i18nCurrentLocale'
-
-
-###
-@function
-@name renderReplace
-@description Smart Handlebars placeholders replacing
-
-@param {string}  string          - Name of property in _l10n object
-@param {mix}     replacements    - Object, array, or string of replacements
-@param {array}   matches         - Array of all found Handlebars placeholders
-@param {int}     index           - Current index from matches array
-###
-renderReplace = (string, replacements, matches, index) ->
-  escapedMatch = matches[index].replace("{{", "").replace("}}", "").trim()
-  unless replacements[escapedMatch]
-    if _.isArray replacements
-      string.replace matches[index], if replacements[index] then replacements[index] else ''
-    else if escapedMatch.indexOf(".") isnt -1
-      params = escapedMatch.split "."
-      if replacements[params[0]] and _.isObject replacements
-        i = 0
-        while i < params.length
-          replacement = replacements[params[i]]
-          i++
-        string.replace matches[index], if replacement then replacement else ''
     else
-      string.replace matches[index], ''
+      @path = Meteor.rootPath + @path
+      throw new Meteor.Error 404, "[i18n | ostrio:i18n] Configuration file: \"#{@path}/i18n.json\" not found!" if not fs.existsSync "#{@path}/i18n.json"
 
-  else if matches[index] and replacements[escapedMatch]
-    string.replace matches[index], replacements[escapedMatch]
+      @collection._ensureIndex {key: 1}, {background: true, unique: true}
+      @collection.deny
+        insert: -> true
+        update: -> true
+        remove: -> true
+
+      @settings = fs.readJsonSync "#{@path}/i18n.json", encoding: "utf8"
+      @collection.upsert {key: '__settings.__langSet__'}, {value: [], key: '__settings.__langSet__'}
+      @collection.upsert {key: '__settings.__langConfig__'}, {value: [], key: '__settings.__langConfig__'}
+
+      for key, value of @settings
+        if value?.path
+          getI18nFiles.call @, "#{@path}/#{value.path.replace('i18n', '').replace('i18n/', '').replace('/i18n', '').replace('/i18n/', '').replace(/^\//, '')}"
+
+        if value?.code
+          @collection.update {key: '__settings.__langSet__'}, {$addToSet: value: value.code}
+          @collection.update {key: '__settings.__langConfig__'}, {$addToSet: value: value}
+
+      for skey, svalue of toDottedString @settings, '__settings'
+        @collection.upsert {key: skey}, {value: svalue, key: skey}
+      
+      Meteor.publish '___i18n___', (keys) ->
+        check keys, [String]
+        _self.collection.find key: $in: keys
+
+      Meteor.publish '___i18nAll___', -> _self.collection.find {} if @allowPublishAll
+    
+      @defaultLocale = @settings.defaultLocale
+
+    @userLocale = (if (Meteor.isClient) then window.navigator.userLanguage or window.navigator.language or navigator.userLanguage else @settings.defaultLocale)
+    
+    @currentLocale.set @defaultLocale unless @currentLocale.get()
+
+    if Meteor.isClient
+      Tracker.autorun =>
+        Meteor.subscribe '___i18n___', @subscribedKeys.get(), ->
+          for key in _self.subscribedKeys.get()
+            _self.strings[key] = new ReactiveVar(if _self.returnKey then key else '') unless _self.strings?[key]
+            _self.strings[key].set _self.collection.findOne({key})?.value or if _self.returnKey then key else ''
+
+  ###
+  @locus Client
+  @class I18N
+  @name  subscribeToAll
+  @description Subscribe to full all languages and all l10n props
+  @param callback {Function} - Callback function triggered right after subscription is ready
+  ###
+  subscribeToAll: if Meteor.isClient then (callback) ->
+    if @allowPublishAll
+      _self = @
+      Meteor.subscribe '___i18nAll___', -> 
+        i18nSet = _self.collection.find()
+        i18nSet.forEach (row) ->
+          _self.strings[row.key] = new ReactiveVar(if _self.returnKey then row.key else '') unless _self.strings?[row.key]
+          _self.strings[row.key].set row.value if row?.value
+        callback && callback()
+  else undefined
+
+  ###
+  @locus Anywhere
+  @class I18N
+  @name  get
+  @description Get l10n value by key
+  @param locale       {String} - [Optional] Two-letter locale string
+  @param key          {String} - l10n key like: `folder.file.object.key`
+  @param replacements... {String|[String]|Object} - [Optional] Replacements for placeholders in l10n string
+  ###
+  get: ->
+    args = Array.prototype.slice.call arguments
+
+    if !!~args[0].indexOf '.'
+      lang         = @currentLocale.get()
+      key          = args[0]
+      replacements = args.slice 1
+    else
+      lang         = args[0]
+      key          = args[1]
+      replacements = args.slice 2
+
+    if replacements[replacements.length] is true
+      fromJS = false
+    else
+      fromJS = true
+
+    if lang
+      _key = lang + '.' + key
+      key  = lang + '.' + key
+
+      if Object.keys(replacements[0]?.hash or replacements)?.length
+        key = key + '__--__' + hashCode(JSON.stringify(replacements))
+
+      if Meteor.isClient
+        @strings[_key] = new ReactiveVar(if @returnKey then _key else '') unless @strings?[_key]
+        sk = @subscribedKeys.get()
+        if !~sk.indexOf _key
+          sk.push _key
+          @subscribedKeys.set sk
+
+        unless Object.keys(replacements[0]?.hash or replacements)?.length
+          result =  @strings[_key].get()
+        else
+          _self = @
+          @strings[key] = new ReactiveVar(if @returnKey then _key else '') unless @strings?[key]
+          @strings[key].get = ->
+            if Tracker.active or fromJS
+              @dep.depend()
+              return proceedPlaceholders _self.strings[_key].get(), replacements
+          result =  @strings[key].get()
+      else
+        result = @collection.findOne({key: _key})?.value
+        if Object.keys(replacements[0]?.hash or replacements)?.length
+          result = proceedPlaceholders result, replacements
+
+      return if Meteor.isClient then result else if not result and @returnKey then _key else if not result then '' else result
+
+  ###
+  @locus Anywhere
+  @class I18N
+  @name  setLocale
+  @description Set another locale
+  @param locale {String} - Two-letter locale string
+  ###
+  setLocale: (locale) ->
+    check locale, String
+
+    if (if Meteor.isClient then !!~@strings['__settings.__langSet__'].get()?.indexOf(locale) else @settings?[locale])
+      @currentLocale.set locale
+      ClientStorage.set "___i18n.locale___", locale if Meteor.isClient 
+    else
+      throw new Meteor.Error 404, "No such locale: \"#{locale}\""
+    return @
+
+  ###
+  @locus Anywhere
+  @class I18N
+  @name  getSetting
+  @description Get parsed data by key from i18n.json file
+  @param key {String} - One of the keys: 'current', 'all', 'other', 'locales'
+  ###
+  getSetting: (key) ->
+    check key, Match.Optional Match.OneOf 'current', 'all', 'other', 'locales'
+
+    if key
+      return @langugeSet()?[key]
+    else
+      return @langugeSet()
+
+  ###
+  @locus Anywhere
+  @class I18N
+  @name  langugeSet
+  @description Get parsed datafrom i18n.json file
+  ###
+  langugeSet: ->
+    if Meteor.isClient
+      current: @currentLocale.get()
+      all: @get '__settings', '__langConfig__'
+      other: (set for set in @get '__settings', '__langConfig__' when set.code isnt @currentLocale.get())
+      locales: @get '__settings', '__langSet__'
+    else
+      current: @currentLocale.get()
+      all: (value for key, value of @settings when _.isObject value)
+      other: (value for key, value of @settings when _.isObject(value) and key isnt @currentLocale.get())
+      locales: (value.code for key, value of @settings when _.isObject value)

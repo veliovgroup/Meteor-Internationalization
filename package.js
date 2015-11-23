@@ -1,24 +1,20 @@
 Package.describe({
   name: 'ostrio:i18n',
-  summary: 'Reactive and fast i18n isomorphic driver for Meteor with support of placeholders.',
-  version: '1.5.1',
+  summary: 'Lightweight and fast i18n isomorphic driver for Meteor with support of placeholders.',
+  version: '2.0.0',
   git: 'https://github.com/VeliovGroup/Meteor-Internationalization',
   documentation: 'README.md'
 });
 
 Package.onUse(function(api) {
-  api.versionsFrom('1.0');
-  api.use(['underscore', 'sha', 'ostrio:jsextensions@0.0.4', 'coffeescript'], ['client', 'server']);
-  api.use(['session', 'templating', 'ostrio:cstorage@1.0.0'], 'client');
-  api.use('ostrio:meteor-root@1.0.0', 'server')
-  api.addFiles(['i18n.coffee', 'collection.coffee'], ['client', 'server']);
-});
-
-Package.onTest(function(api) {
-  api.use(['coffeescript', 'ostrio:i18n', 'tinytest'], ['client', 'server']);
-  api.addFiles('i18n-tests.js');
+  api.versionsFrom('1.2');
+  api.use(['underscore', 'coffeescript', 'check', 'reactive-var'], ['client', 'server']);
+  api.use(['templating', 'ostrio:cstorage@2.0.1', 'tracker'], 'client');
+  api.use('ostrio:meteor-root@1.0.2', 'server')
+  api.addFiles('i18n.coffee', ['client', 'server']);
+  api.export('I18N', ['server', 'client']);
 });
 
 Npm.depends({
-  'fs-extra': '0.22.1'
+  'fs-extra': '0.26.2'
 });
