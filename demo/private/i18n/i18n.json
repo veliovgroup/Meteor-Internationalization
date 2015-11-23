@@ -1,0 +1,15 @@
+{
+  "defaultLocale": "en",
+  "ru": {
+    "code": "ru",
+    "isoCode": "ru-RU",
+    "name": "Русский",
+    "path": "i18n/ru/"
+  },
+  "en": {
+    "code": "en",
+    "isoCode": "en-US",
+    "name": "English",
+    "path": "i18n/en/"
+  }
+}
