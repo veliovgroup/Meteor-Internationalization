@@ -89,29 +89,36 @@ class I18N
   @param config.path               {String}  - Path to `i18n` folder
   @param config.returnKey          {Boolean} - Return key if l10n value not found
   @param config.collectionName     {String}  - i18n Collection name
-  @param config.helperName         {String}  - Template helper name
-  @param config.helperSettingsName {String}  - Settings helper name
+  @param config.helperName         {String}  - Template main i18n helper name
+  @param config.helperSettingsName {String}  - Template i18nSettings helper name
   @param config.allowPublishAll    {Boolean} - Allow publish full i18n set to client
+  @param config.subsCacheLimit     {Number}  - SubsManager cacheLimit
+  @param config.subsExpireIn       {Number}  - SubsManager expireIn
   ###
   constructor: (config = {}) ->
     check config, Object
 
     _self               = @
+    @path               = config.path or '/assets/app/i18n'
     @returnKey          = config.returnKey or true
     @helperName         = config.helperName or 'i18n'
+    subsExpireIn        = config.subsExpireIn or 9999
+    subsCacheLimit      = config.subsCacheLimit or 9999
     @collectionName     = config.collectionName or "internalization"
     @allowPublishAll    = config.allowPublishAll or true
-    @helperSettingsName = config.helperName or 'i18nSettings'
-    @path               = config.path or '/assets/app/i18n'
+    @helperSettingsName = config.helperSettingsName or 'i18nSettings'
 
     check @returnKey, Boolean
     check @helperName, String
+    check subsExpireIn, Number
+    check subsCacheLimit, Number
     check @collectionName, String
     check @allowPublishAll, Boolean
     check @helperSettingsName, String
 
     @collection         = new Meteor.Collection @collectionName
-    @currentLocale       = new ReactiveVar undefined
+    @currentLocale      = new ReactiveVar undefined
+    @subsManager        = new SubsManager cacheLimit: subsCacheLimit, expireIn: subsExpireIn
 
     if Meteor.isClient
       @strings        = {}
@@ -130,7 +137,7 @@ class I18N
       ###
       Template.registerHelper @helperSettingsName, => @getSetting.apply @, arguments
 
-      Meteor.subscribe '___i18n___', @subscribedKeys.get(), ->
+      @subsManager.subscribe '___i18n___', @subscribedKeys.get(), ->
         for key in _self.subscribedKeys.get()
           _self.strings[key] = new ReactiveVar(if _self.returnKey then key else '') unless _self.strings?[key]
           _self.strings[key].set _self.collection.findOne({key})?.value
@@ -185,7 +192,7 @@ class I18N
         check keys, [String]
         _self.collection.find key: $in: keys
 
-      Meteor.publish '___i18nAll___', -> _self.collection.find {} if @allowPublishAll
+      Meteor.publish '___i18nAll___', -> _self.collection.find {} if _self.allowPublishAll
     
       @defaultLocale = @settings.defaultLocale
 
@@ -195,7 +202,7 @@ class I18N
 
     if Meteor.isClient
       Tracker.autorun =>
-        Meteor.subscribe '___i18n___', @subscribedKeys.get(), ->
+        @subsManager.subscribe '___i18n___', @subscribedKeys.get(), ->
           for key in _self.subscribedKeys.get()
             _self.strings[key] = new ReactiveVar(if _self.returnKey then key else '') unless _self.strings?[key]
             _self.strings[key].set _self.collection.findOne({key})?.value or if _self.returnKey then key else ''
@@ -210,7 +217,7 @@ class I18N
   subscribeToAll: if Meteor.isClient then (callback) ->
     if @allowPublishAll
       _self = @
-      Meteor.subscribe '___i18nAll___', -> 
+      @subsManager.subscribe '___i18nAll___', -> 
         i18nSet = _self.collection.find()
         i18nSet.forEach (row) ->
           _self.strings[row.key] = new ReactiveVar(if _self.returnKey then row.key else '') unless _self.strings?[row.key]

@@ -21,12 +21,13 @@ jquery@1.11.4
 localstorage@1.0.5
 logging@1.0.8
 meteor@1.1.10
+meteorhacks:subs-manager@1.6.2
 minifiers@1.1.7
 mongo-id@1.0.1
 observe-sequence@1.0.7
 ostrio:cookies@2.0.1
 ostrio:cstorage@2.0.1
-ostrio:i18n@2.0.0
+ostrio:i18n@2.0.1
 ostrio:meteor-root@1.0.2
 promise@0.5.1
 random@1.0.5
