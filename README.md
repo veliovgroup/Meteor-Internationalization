@@ -113,7 +113,7 @@ i18n.langugeSet();
 ```
 
 ##### Get specific key from configuration object
- - `key` {*String*} - One of the keys: `current`, `all`, `other`, `locales`
+ - `key` {*String*} - One of the keys: `current`, `all`, `other`, `locales`, `currentISO`, `currentName`, `currentPath`
 ```javascript
 i18n.getSetting('current'); // en
 ```
@@ -123,6 +123,20 @@ Client specific usage
 ##### Client's browser locale
 ```javascript
 i18n.userLocale; // en-US
+```
+
+##### `subscribeToAll(callback)`
+ - `callback` {*Function*} - Callback function triggered right after subscription is ready
+Send full i18n and l10n set to client, might be used within `iron-router` and `fastrender` packages, example:
+```javascript
+i18n = new I18N();
+Router.route('index', {
+  path: '/',
+  fastRender: true,
+  waitOn: function() {
+    return i18n.subscribeToAll();
+  }
+});
 ```
 
 Template helpers
@@ -161,6 +175,12 @@ Template helpers
 </template>
 ```
 ```javascript
+Template.langSwitch.helpers({
+  currentLocale: function(){
+    return i18n.currentLocale.get()
+  }
+});
+
 Template.langSwitch.events({
   'click .switch-language': function(e, template) {
     e.preventDefault();

@@ -117,8 +117,9 @@ class I18N
     check @helperSettingsName, String
 
     @collection         = new Meteor.Collection @collectionName
-    @currentLocale      = new ReactiveVar undefined
     @subsManager        = new SubsManager cacheLimit: subsCacheLimit, expireIn: subsExpireIn
+    @currentLocale      = new ReactiveVar undefined
+    @subscribedToAll    = false
 
     if Meteor.isClient
       @strings        = {}
@@ -202,10 +203,11 @@ class I18N
 
     if Meteor.isClient
       Tracker.autorun =>
-        @subsManager.subscribe '___i18n___', @subscribedKeys.get(), ->
-          for key in _self.subscribedKeys.get()
-            _self.strings[key] = new ReactiveVar(if _self.returnKey then key else '') unless _self.strings?[key]
-            _self.strings[key].set _self.collection.findOne({key})?.value or if _self.returnKey then key else ''
+        unless @subscribedToAll
+          @subsManager.subscribe '___i18n___', @subscribedKeys.get(), ->
+            for key in _self.subscribedKeys.get()
+              _self.strings[key] = new ReactiveVar(if _self.returnKey then key else '') unless _self.strings?[key]
+              _self.strings[key].set _self.collection.findOne({key})?.value or if _self.returnKey then key else ''
 
   ###
   @locus Client
@@ -214,16 +216,16 @@ class I18N
   @description Subscribe to full all languages and all l10n props
   @param callback {Function} - Callback function triggered right after subscription is ready
   ###
-  subscribeToAll: if Meteor.isClient then (callback) ->
+  subscribeToAll: (callback) ->
     if @allowPublishAll
       _self = @
-      @subsManager.subscribe '___i18nAll___', -> 
+      @subscribedToAll = true
+      return @subsManager.subscribe '___i18nAll___', -> 
         i18nSet = _self.collection.find()
         i18nSet.forEach (row) ->
           _self.strings[row.key] = new ReactiveVar(if _self.returnKey then row.key else '') unless _self.strings?[row.key]
           _self.strings[row.key].set row.value if row?.value
         callback && callback()
-  else undefined
 
   ###
   @locus Anywhere
@@ -307,7 +309,7 @@ class I18N
   @param key {String} - One of the keys: 'current', 'all', 'other', 'locales'
   ###
   getSetting: (key) ->
-    check key, Match.Optional Match.OneOf 'current', 'all', 'other', 'locales'
+    check key, Match.Optional Match.OneOf 'current', 'all', 'other', 'locales', 'currentISO', 'currentName', 'currentPath'
 
     if key
       return @langugeSet()?[key]
@@ -322,12 +324,21 @@ class I18N
   ###
   langugeSet: ->
     if Meteor.isClient
+      current = {}
+      current = set for set in @get '__settings', '__langConfig__' when set.code is @currentLocale.get()
       current: @currentLocale.get()
+      currentISO: current?.isoCode
+      currentName: current?.name
+      currentPath: current?.path
       all: @get '__settings', '__langConfig__'
       other: (set for set in @get '__settings', '__langConfig__' when set.code isnt @currentLocale.get())
       locales: @get '__settings', '__langSet__'
     else
+      current = @settings[@currentLocale.get()]
       current: @currentLocale.get()
+      currentISO: current.isoCode
+      currentName: current.name
+      currentPath: current.path
       all: (value for key, value of @settings when _.isObject value)
       other: (value for key, value of @settings when _.isObject(value) and key isnt @currentLocale.get())
       locales: (value.code for key, value of @settings when _.isObject value)
