@@ -15,7 +15,7 @@ meteor add ostrio:i18n
 ```
 
 ### Object-based structure
-```javsacript
+```javascript
 /* Isomorphic (Both server and client) */
 i18nConfig = {
   settings: { //--> Config object
