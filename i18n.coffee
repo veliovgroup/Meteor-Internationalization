@@ -86,6 +86,8 @@ class I18N
   @constructor 
   @description Initialize I18N object with `config`
   @param config                    {Object}
+  @param config.driver             {String}  - Driver type (one of 'Mongo' or 'Object'). Use `Mongo` for file-based and `Object` object-based
+  @param config.i18n               {Object}  - Internalization object
   @param config.path               {String}  - Path to `i18n` folder
   @param config.returnKey          {Boolean} - Return key if l10n value not found
   @param config.collectionName     {String}  - i18n Collection name
@@ -100,6 +102,7 @@ class I18N
 
     _self               = @
     @path               = config.path or '/assets/app/i18n'
+    @driver             = config?.driver?.toLowerCase() or 'mongo'
     @returnKey          = config.returnKey or true
     @helperName         = config.helperName or 'i18n'
     subsExpireIn        = config.subsExpireIn or 9999
@@ -107,7 +110,9 @@ class I18N
     @collectionName     = config.collectionName or "internalization"
     @allowPublishAll    = config.allowPublishAll or true
     @helperSettingsName = config.helperSettingsName or 'i18nSettings'
+    @currentLocale      = new ReactiveVar undefined
 
+    check @driver, Match.OneOf 'mongo', 'object'
     check @returnKey, Boolean
     check @helperName, String
     check subsExpireIn, Number
@@ -116,21 +121,41 @@ class I18N
     check @allowPublishAll, Boolean
     check @helperSettingsName, String
 
-    @collection         = new Meteor.Collection @collectionName
-    @subsManager        = new SubsManager cacheLimit: subsCacheLimit, expireIn: subsExpireIn
-    @currentLocale      = new ReactiveVar undefined
-    @subscribedToAll    = false
+    if @driver is 'object'
+      check config.i18n, Object
+      @strings = {}
+      for key, value of config.i18n
+        if key isnt 'settings'
+          for key, value of toDottedString value, key
+            @strings[key] = value
+
+      if _.isObject config.i18n
+        check config.i18n.settings, Object
+        @settings = config.i18n.settings
+        @defaultLocale = @settings.defaultLocale
+        @strings['__settings.__langSet__'] = []
+        @strings['__settings.__langConfig__'] = []
+        for key, value of toDottedString @settings, '__settings'
+          @strings[key] = value
+
+          if value?.code
+            @strings['__settings.__langSet__'].push value.code
+            @strings['__settings.__langConfig__'].push value
+
+      @userLocale = (if (Meteor.isClient) then window.navigator.userLanguage or window.navigator.language or navigator.userLanguage else @settings.defaultLocale)
+
+    if @driver is 'mongo'
+      @collection         = new Meteor.Collection @collectionName
+      @subsManager        = new SubsManager cacheLimit: subsCacheLimit, expireIn: subsExpireIn
+      @subscribedToAll    = false
+      
 
     if Meteor.isClient
-      @strings        = {}
-      @subscribedKeys = new ReactiveVar ['__settings.defaultLocale', '__settings.__langSet__', '__settings.__langConfig__']
-      @strings[key]   = new ReactiveVar([]) for key in ['__settings.__langSet__', '__settings.__langConfig__']
       ###
       @description Main `i18n` template helper
       ###
       Template.registerHelper @helperName, => 
         args = Array.prototype.slice.call arguments
-        args.push true
         @get.apply @, args
 
       ###
@@ -138,76 +163,102 @@ class I18N
       ###
       Template.registerHelper @helperSettingsName, => @getSetting.apply @, arguments
 
-      @subsManager.subscribe '___i18n___', @subscribedKeys.get(), ->
-        for key in _self.subscribedKeys.get()
-          _self.strings[key] = new ReactiveVar(if _self.returnKey then key else '') unless _self.strings?[key]
-          _self.strings[key].set _self.collection.findOne({key})?.value
-        
-        _self.defaultLocale = _self.collection.findOne({key: '__settings.defaultLocale'})?.value
-
-        unless _self.currentLocale.get()
+      if @driver is 'object'
+        unless @currentLocale.get()
           unless ClientStorage.get "___i18n.locale___"
-            for lang in _self.collection.findOne({key: '__settings.__langConfig__'})?.value or []
-              if lang.code is _self.userLocale
-                _self.currentLocale.set lang.code
+            for lang in @strings['__settings.__langConfig__']
+              if lang.code is @userLocale
+                @currentLocale.set lang.code
                 ClientStorage.set "___i18n.locale___", lang.code
-              if lang.isoCode is _self.userLocale
-                _self.currentLocale.set lang.isoCode.substring 0, 2
+              if lang.isoCode is @userLocale
+                @currentLocale.set lang.isoCode.substring 0, 2
                 ClientStorage.set "___i18n.locale___", lang.isoCode.substring 0, 2
 
-            _self.currentLocale.set _self.defaultLocale
-            ClientStorage.set "___i18n.locale___", _self.defaultLocale
+            @currentLocale.set @defaultLocale
+            ClientStorage.set "___i18n.locale___", @defaultLocale
           else
-            if !!~(_self.collection.findOne({key: '__settings.__langSet__'})?.value or []).indexOf ClientStorage.get "___i18n.locale___"
-              _self.currentLocale.set ClientStorage.get "___i18n.locale___"
+            if !!~@strings['__settings.__langSet__'].indexOf ClientStorage.get "___i18n.locale___"
+              @currentLocale.set ClientStorage.get "___i18n.locale___"
             else
+              @currentLocale.set @defaultLocale
+              ClientStorage.set "___i18n.locale___", @defaultLocale
+      else
+        @strings        = {}
+        @subscribedKeys = new ReactiveVar ['__settings.defaultLocale', '__settings.__langSet__', '__settings.__langConfig__']
+        @strings[key]   = new ReactiveVar([]) for key in ['__settings.__langSet__', '__settings.__langConfig__']
+        
+        Tracker.autorun =>
+          unless @subscribedToAll
+            @subsManager.subscribe '___i18n___', @subscribedKeys.get(), ->
+              for key in _self.subscribedKeys.get()
+                _self.strings[key] = new ReactiveVar(if _self.returnKey then key else '') unless _self.strings?[key]
+                _self.strings[key].set _self.collection.findOne({key})?.value or if _self.returnKey then key else ''
+
+        Meteor.subscribe '___i18n___', @subscribedKeys.get(), ->
+          for key in _self.subscribedKeys.get()
+            _self.strings[key] = new ReactiveVar(if _self.returnKey then key else '') unless _self.strings?[key]
+            _self.strings[key].set _self.collection.findOne({key})?.value
+          
+          _self.defaultLocale = _self.collection.findOne({key: '__settings.defaultLocale'})?.value
+
+          unless _self.currentLocale.get()
+            unless ClientStorage.get "___i18n.locale___"
+              for lang in _self.collection.findOne({key: '__settings.__langConfig__'})?.value or []
+                if lang.code is _self.userLocale
+                  _self.currentLocale.set lang.code
+                  ClientStorage.set "___i18n.locale___", lang.code
+                if lang.isoCode is _self.userLocale
+                  _self.currentLocale.set lang.isoCode.substring 0, 2
+                  ClientStorage.set "___i18n.locale___", lang.isoCode.substring 0, 2
+
               _self.currentLocale.set _self.defaultLocale
               ClientStorage.set "___i18n.locale___", _self.defaultLocale
+            else
+              if !!~(_self.collection.findOne({key: '__settings.__langSet__'})?.value or []).indexOf ClientStorage.get "___i18n.locale___"
+                _self.currentLocale.set ClientStorage.get "___i18n.locale___"
+              else
+                _self.currentLocale.set _self.defaultLocale
+                ClientStorage.set "___i18n.locale___", _self.defaultLocale
 
     else
-      @path = Meteor.rootPath + @path
-      throw new Meteor.Error 404, "[i18n | ostrio:i18n] Configuration file: \"#{@path}/i18n.json\" not found!" if not fs.existsSync "#{@path}/i18n.json"
+      if @driver is 'mongo'
+        @path = Meteor.rootPath + @path
+        throw new Meteor.Error 404, "[i18n | ostrio:i18n] Configuration file: \"#{@path}/i18n.json\" not found!" if not fs.existsSync "#{@path}/i18n.json"
 
-      @collection._ensureIndex {key: 1}, {background: true, unique: true}
-      @collection.deny
-        insert: -> true
-        update: -> true
-        remove: -> true
+        @collection._ensureIndex {key: 1}, {background: true, unique: true}
+        @collection.deny
+          insert: -> true
+          update: -> true
+          remove: -> true
 
-      @settings = fs.readJsonSync "#{@path}/i18n.json", encoding: "utf8"
-      @collection.upsert {key: '__settings.__langSet__'}, {value: [], key: '__settings.__langSet__'}
-      @collection.upsert {key: '__settings.__langConfig__'}, {value: [], key: '__settings.__langConfig__'}
+        @settings = fs.readJsonSync "#{@path}/i18n.json", encoding: "utf8"
+        @collection.upsert {key: '__settings.__langSet__'}, {value: [], key: '__settings.__langSet__'}
+        @collection.upsert {key: '__settings.__langConfig__'}, {value: [], key: '__settings.__langConfig__'}
 
-      for key, value of @settings
-        if value?.path
-          getI18nFiles.call @, "#{@path}/#{value.path.replace('i18n', '').replace('i18n/', '').replace('/i18n', '').replace('/i18n/', '').replace(/^\//, '')}"
+        for key, value of @settings
+          if value?.path
+            getI18nFiles.call @, "#{@path}/#{value.path.replace('i18n', '').replace('i18n/', '').replace('/i18n', '').replace('/i18n/', '').replace(/^\//, '')}"
 
-        if value?.code
-          @collection.update {key: '__settings.__langSet__'}, {$addToSet: value: value.code}
-          @collection.update {key: '__settings.__langConfig__'}, {$addToSet: value: value}
+          if value?.code
+            @collection.update {key: '__settings.__langSet__'}, {$addToSet: value: value.code}
+            @collection.update {key: '__settings.__langConfig__'}, {$addToSet: value: value}
 
-      for skey, svalue of toDottedString @settings, '__settings'
-        @collection.upsert {key: skey}, {value: svalue, key: skey}
-      
-      Meteor.publish '___i18n___', (keys) ->
-        check keys, [String]
-        _self.collection.find key: $in: keys
+        for skey, svalue of toDottedString @settings, '__settings'
+          @collection.upsert {key: skey}, {value: svalue, key: skey}
+        
+        Meteor.publish '___i18n___', (keys) ->
+          check keys, [String]
+          _self.collection.find key: $in: keys
 
-      Meteor.publish '___i18nAll___', -> _self.collection.find {} if _self.allowPublishAll
+        Meteor.publish '___i18nAll___', -> _self.collection.find {} if _self.allowPublishAll
     
       @defaultLocale = @settings.defaultLocale
+      @currentLocale.set @defaultLocale
 
-    @userLocale = (if (Meteor.isClient) then window.navigator.userLanguage or window.navigator.language or navigator.userLanguage else @settings.defaultLocale)
+    if @driver is 'mongo'
+      @userLocale = (if (Meteor.isClient) then window.navigator.userLanguage or window.navigator.language or navigator.userLanguage else @settings.defaultLocale)
     
     @currentLocale.set @defaultLocale unless @currentLocale.get()
-
-    if Meteor.isClient
-      Tracker.autorun =>
-        unless @subscribedToAll
-          @subsManager.subscribe '___i18n___', @subscribedKeys.get(), ->
-            for key in _self.subscribedKeys.get()
-              _self.strings[key] = new ReactiveVar(if _self.returnKey then key else '') unless _self.strings?[key]
-              _self.strings[key].set _self.collection.findOne({key})?.value or if _self.returnKey then key else ''
 
   ###
   @locus Client
@@ -217,7 +268,7 @@ class I18N
   @param callback {Function} - Callback function triggered right after subscription is ready
   ###
   subscribeToAll: (callback) ->
-    if @allowPublishAll
+    if @driver is 'mongo' and @allowPublishAll
       _self = @
       @subscribedToAll = true
       return @subsManager.subscribe '___i18nAll___', -> 
@@ -239,14 +290,14 @@ class I18N
   get: ->
     args = Array.prototype.slice.call arguments
 
-    if !!~args[0].indexOf '.'
-      lang         = @currentLocale.get()
-      key          = args[0]
-      replacements = args.slice 1
-    else
+    if !~args[0].indexOf('.') and _.isString args?[1]
       lang         = args[0]
       key          = args[1]
       replacements = args.slice 2
+    else
+      lang         = @currentLocale.get() or @defaultLocale or 'en'
+      key          = args[0]
+      replacements = args.slice 1
 
     if replacements[replacements.length] is true
       fromJS = false
@@ -255,34 +306,44 @@ class I18N
 
     if lang
       _key = lang + '.' + key
-      key  = lang + '.' + key
 
-      if Object.keys(replacements[0]?.hash or replacements)?.length
-        key = key + '__--__' + hashCode(JSON.stringify(replacements))
-
-      if Meteor.isClient
-        @strings[_key] = new ReactiveVar(if @returnKey then _key else '') unless @strings?[_key]
-        sk = @subscribedKeys.get()
-        if !~sk.indexOf _key
-          sk.push _key
-          @subscribedKeys.set sk
-
-        unless Object.keys(replacements[0]?.hash or replacements)?.length
-          result =  @strings[_key].get()
-        else
-          _self = @
-          @strings[key] = new ReactiveVar(if @returnKey then _key else '') unless @strings?[key]
-          @strings[key].get = ->
-            if Tracker.active or fromJS
-              @dep.depend()
-              return proceedPlaceholders _self.strings[_key].get(), replacements
-          result =  @strings[key].get()
-      else
-        result = @collection.findOne({key: _key})?.value
+      if @driver is 'mongo'
+        
+        key  = lang + '.' + key
         if Object.keys(replacements[0]?.hash or replacements)?.length
+          key = key + '__--__' + hashCode JSON.stringify replacements
+
+        if Meteor.isClient
+          @strings[_key] = new ReactiveVar(if @returnKey then _key else '') unless @strings?[_key]
+          
+          sk = @subscribedKeys.get()
+          if !~sk.indexOf _key
+            sk.push _key
+            @subscribedKeys.set sk
+
+          unless Object.keys(replacements[0]?.hash or replacements)?.length
+            result =  @strings[_key].get()
+          else
+            _self = @
+            @strings[key] = new ReactiveVar(if @returnKey then _key else '') unless @strings?[key]
+            @strings[key].get = ->
+              if Tracker.active or fromJS
+                @dep.depend()
+                if _self.strings[_key].get() isnt _key and _self.strings[_key].get()?.length
+                  return proceedPlaceholders _self.strings[_key].get(), replacements
+                else
+                  return _self.strings[_key].get()
+            result =  @strings[key].get()
+        else
+          result = @collection.findOne({key: _key})?.value
+          if Object.keys(replacements[0]?.hash or replacements)?.length
+            result = proceedPlaceholders result, replacements
+      else
+        result = @strings?[_key] or if @returnKey then _key else ''
+        if result isnt _key and result?.length and Object.keys(replacements[0]?.hash or replacements)?.length
           result = proceedPlaceholders result, replacements
 
-      return if Meteor.isClient then result else if not result and @returnKey then _key else if not result then '' else result
+      return result
 
   ###
   @locus Anywhere
@@ -294,7 +355,13 @@ class I18N
   setLocale: (locale) ->
     check locale, String
 
-    if (if Meteor.isClient then !!~@strings['__settings.__langSet__'].get()?.indexOf(locale) else @settings?[locale])
+    localeExists = !!@settings?[locale]
+
+    if @driver is 'mongo'
+      if Meteor.isClient
+        localeExists = !!~@strings['__settings.__langSet__'].get()?.indexOf(locale)
+
+    if localeExists
       @currentLocale.set locale
       ClientStorage.set "___i18n.locale___", locale if Meteor.isClient 
     else
@@ -323,7 +390,7 @@ class I18N
   @description Get parsed datafrom i18n.json file
   ###
   langugeSet: ->
-    if Meteor.isClient
+    if Meteor.isClient and @driver is 'mongo'
       current = {}
       current = set for set in @get '__settings', '__langConfig__' when set.code is @currentLocale.get()
       current: @currentLocale.get()

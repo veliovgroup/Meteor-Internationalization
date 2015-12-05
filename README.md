@@ -4,7 +4,8 @@ File based, fast, lightweight (*325 lines with comments*) and reactive internati
 
 Demo
 ========
- - Please see [live demo](http://internalization.meteor.com)
+ - Please see [Mongo-based live demo](http://internalization.meteor.com)
+ - Please see [Object-based live demo](http://internalization-object.meteor.com)
  - Demo [source code](https://github.com/VeliovGroup/Meteor-Internationalization/tree/master/demo)
 
 Install:
@@ -13,7 +14,42 @@ Install:
 meteor add ostrio:i18n
 ```
 
-### Files and Folders structure
+### Object-based structure
+```javsacript
+/* Isomorphic (Both server and client) */
+i18nConfig = {
+  settings: { //--> Config object
+    defaultLocale: "en",
+    ru: {
+      code: "ru",
+      isoCode: "ru-RU",
+      name: "Русский"
+    },
+    en: {
+      code: "en",
+      isoCode: "en-US",
+      name: "English"
+    }
+  },
+  ru:{ //--> Localization folder with name of country two-letter code
+    property: "value",
+    property2: {
+      nestedProp: "value"
+    }
+  },
+  en:{ //--> Localization folder with name of country two-letter code
+    property: "value",
+    property2: {
+      nestedProp: "value"
+    }
+  }
+  ...
+};
+
+this.i18n = new I18N({driver: 'Object', i18n: i18nConfig});
+```
+
+### Mongo-based Files and Folders structure
 ```schema
  private/
  └─ i18n/ //--> Driver's dir
@@ -39,6 +75,8 @@ this.i18n = new I18N(config);
 ```
 
 __Configuration object__:
+ - `config.driver` {String: *Mongo*|*Object*} - Driver type. Use `Mongo` for file-based and `Object` object-based
+ - `config.i18n`               {*Object*}  - [Internalization object](https://github.com/VeliovGroup/Meteor-Internationalization#object-based-structure)
  - `config.path`               {*String*}  - Path to `i18n` folder, default: `/assets/app/i18n` (*which points to:* `private/i18n` *in dev environment*)
  - `config.returnKey`          {*Boolean*} - Return key if l10n value not found, default: `true`
  - `config.collectionName`     {*String*}  - i18n Collection name, default: `internalization`
