@@ -14,7 +14,8 @@ if Meteor.isClient
   Template.demo.events
     'click .switch-language': (e, template) ->
       e.preventDefault()
-      i18n.setLocale e.currentTarget.dataset.code
+      if e.currentTarget.dataset?.code
+        i18n.setLocale e.currentTarget.dataset.code
       false
 
 Meteor.startup ->
