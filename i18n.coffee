@@ -138,6 +138,7 @@ class I18N
         for key, value of toDottedString @settings, '__settings'
           @strings[key] = value
 
+        for key, value of @settings
           if value?.code
             @strings['__settings.__langSet__'].push value.code
             @strings['__settings.__langConfig__'].push value
