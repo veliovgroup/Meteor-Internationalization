@@ -24,15 +24,15 @@ hashCode = (s) ->
 @description Convert object nested keys into dotted string
 ###
 toDottedString = (obj, prepend = 'i18n') ->
-  check obj, Object
+  check obj, Match.OneOf Function, Object
   check prepend, String
 
   final = {}
   for key, value of obj
-    if _.isString value
+    if _.isFunction(value) or _.isString value
       final[prepend + '.' + key] = value
     else
-      final = _.extend final, toDottedString value, prepend + '.' + key
+      final = _.extend final, toDottedString.call @, value, prepend + '.' + key
   return final
 
 ###
@@ -47,10 +47,10 @@ proceedPlaceholders = (string, replacements) ->
     for replacement in replacements
       if _.isObject replacement?.hash
         for key, value of replacement.hash
-          string = string.replace new RegExp("\{\{(\s)*(#{key})+(\s)*\}\}", 'i'), value
+          string = string.replace new RegExp("\{\{(\s)*(#{key})+(\s)*\}\}", 'ig'), value
       else if _.isObject replacement
         for key, value of replacement
-          string = string.replace new RegExp("\{\{(\s)*(#{key})+(\s)*\}\}", 'i'), value
+          string = string.replace new RegExp("\{\{(\s)*(#{key})+(\s)*\}\}", 'ig'), value
       else
         string = string.replace new RegExp('\{\{(\s)*([A-z])+(\s)*\}\}', 'i'), replacement
   return string
@@ -75,7 +75,7 @@ getI18nFiles = (path) ->
           else
             if !!~file.indexOf '.json'
               fcont = fs.readJsonSync file
-              for skey, svalue of toDottedString fcont, file.replace('.json', '').replace(_self.path + '/', '').replace(/\/\//g, '.').replace(/\//g, '.')
+              for skey, svalue of toDottedString.call _self, fcont, file.replace('.json', '').replace(_self.path + '/', '').replace(/\/\//g, '.').replace(/\//g, '.')
                 _self.collection.upsert {key: skey}, {value: svalue, key: skey}
 
 
@@ -126,7 +126,7 @@ class I18N
       @strings = {}
       for key, value of config.i18n
         if key isnt 'settings'
-          for key, value of toDottedString value, key
+          for key, value of toDottedString.call @, value, key
             @strings[key] = value
 
       if _.isObject config.i18n
@@ -135,7 +135,7 @@ class I18N
         @defaultLocale = @settings.defaultLocale
         @strings['__settings.__langSet__'] = []
         @strings['__settings.__langConfig__'] = []
-        for key, value of toDottedString @settings, '__settings'
+        for key, value of toDottedString.call @, @settings, '__settings'
           @strings[key] = value
 
         for key, value of @settings
@@ -244,7 +244,7 @@ class I18N
             @collection.update {key: '__settings.__langSet__'}, {$addToSet: value: value.code}
             @collection.update {key: '__settings.__langConfig__'}, {$addToSet: value: value}
 
-        for skey, svalue of toDottedString @settings, '__settings'
+        for skey, svalue of toDottedString.call @, @settings, '__settings'
           @collection.upsert {key: skey}, {value: svalue, key: skey}
         
         Meteor.publish '___i18n___', (keys) ->
@@ -341,6 +341,8 @@ class I18N
             result = proceedPlaceholders result, replacements
       else
         result = @strings?[_key] or if @returnKey then _key else ''
+        if _.isFunction result
+          result = result.call @
         if result isnt _key and result?.length and Object.keys(replacements[0]?.hash or replacements)?.length
           result = proceedPlaceholders result, replacements
 

@@ -31,16 +31,22 @@ i18nConfig = {
       name: "English"
     }
   },
-  ru:{ //--> Localization folder with name of country two-letter code
+  ru:{ //--> Localization with key of country two-letter code
     property: "value",
     property2: {
       nestedProp: "value"
+    },
+    dynamicProperty: function(){
+      return '<a href="/' + this.currentLocale.get() + '/info">info</a>';
     }
   },
-  en:{ //--> Localization folder with name of country two-letter code
+  en:{ //--> Localization with key of country two-letter code
     property: "value",
     property2: {
       nestedProp: "value"
+    },
+    dynamicProperty: function(){
+      return '<a href="/' + this.currentLocale.get() + '/info">info</a>';
     }
   }
   ...
