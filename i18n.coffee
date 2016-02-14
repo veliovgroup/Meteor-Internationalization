@@ -291,6 +291,9 @@ class I18N
   get: ->
     args = Array.prototype.slice.call arguments
 
+    unless args.length and args?[0]
+      return ''
+
     if !~args[0].indexOf('.') and _.isString args?[1]
       lang         = args[0]
       key          = args[1]
