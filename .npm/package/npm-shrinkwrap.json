@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "fs-extra": {
-      "version": "0.26.5",
+      "version": "0.26.7",
       "dependencies": {
         "graceful-fs": {
           "version": "4.1.3"
