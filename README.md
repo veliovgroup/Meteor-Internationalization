@@ -110,6 +110,19 @@ i18n.get(locale, param, replacements); // Force locale, with replacements
 i18n.get('en', 'file.obj.key', 'User Name'); // Hello {{username}} -> Hello User Name
 ```
 
+##### `has([locale,] key)`
+*Determine whenever key is exists in configuration file(s).*
+
+ - `locale` {*String*} - [Optional] Two-letter locale string, used to force locale, if not set __current locale__ is used
+ - `key`    {*String*} - l10n key like: `folder.file.object.key`
+
+```javascript
+i18n.has('file.obj.key'); // Current locale
+i18n.has(locale, param); // Force locale
+i18n.has('ca', 'file.obj.key'); //false
+i18n.has('en', 'file.obj.key'); //true
+```
+
 ##### `setLocale(locale)`
  - `locale` {*String*} - Two-letter locale code
 ```javascript

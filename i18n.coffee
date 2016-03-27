@@ -354,6 +354,39 @@ class I18N
   ###
   @locus Anywhere
   @class I18N
+  @name  has
+  @description Check if key exists in current locale
+  @param locale       {String} - [Optional] Two-letter locale string
+  @param key          {String} - l10n key like: `folder.file.object.key`
+  ###
+  has: ->
+    args = Array.prototype.slice.call arguments
+
+    unless args.length and args?[0]
+      return ''
+
+    if !~args[0].indexOf('.') and _.isString args?[1]
+      lang = args[0]
+      key  = args[1]
+    else
+      lang = @currentLocale.get() or @defaultLocale or 'en'
+      key  = args[0]
+
+    if lang
+      key = lang + '.' + key
+      if @driver is 'mongo'
+        if Meteor.isClient
+          return !!@strings?[key]
+        else
+          return !!@collection.findOne({key})?.value
+      else
+        return !!@strings?[key]
+    else
+      return false
+
+  ###
+  @locus Anywhere
+  @class I18N
   @name  setLocale
   @description Set another locale
   @param locale {String} - Two-letter locale string
