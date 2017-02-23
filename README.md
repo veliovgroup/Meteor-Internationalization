@@ -1,6 +1,6 @@
 Reactive i18n and l10n isomorphic driver
 ========
-Object based, fast, lightweight (*312 lines with comments*) and reactive internationalization isomorphic driver for Meteor with support of placeholders.
+Object based, fast, lightweight (*306 lines with comments*) and reactive internationalization isomorphic driver for Meteor with support of placeholders.
 
 Install:
 ========
