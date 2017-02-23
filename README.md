@@ -1,12 +1,6 @@
-Reactive i18n and l10n isomorphic service for Meteor
+Reactive i18n and l10n isomorphic driver
 ========
-File based, fast, lightweight (*325 lines with comments*) and reactive internationalization isomorphic driver for Meteor with support of placeholders.
-
-Demo
-========
- - Please see [Mongo-based live demo](http://internalization.meteor.com)
- - Please see [Object-based live demo](http://internalization-object.meteor.com)
- - Demo [source code](https://github.com/VeliovGroup/Meteor-Internationalization/tree/master/demo)
+Object based, fast, lightweight (*312 lines with comments*) and reactive internationalization isomorphic driver for Meteor with support of placeholders.
 
 Install:
 ========
@@ -14,10 +8,16 @@ Install:
 meteor add ostrio:i18n
 ```
 
+Import:
+========
+```jsx
+import I18N from 'meteor/ostrio:i18n';
+```
+
 ### Object-based structure
-```javascript
-/* Isomorphic (Both server and client) */
-i18nConfig = {
+```jsx
+/* Isomorphic (Both Server and Client) */
+const i18nConfig = {
   settings: { //--> Config object
     defaultLocale: "en",
     ru: {
@@ -36,7 +36,7 @@ i18nConfig = {
     property2: {
       nestedProp: "value"
     },
-    dynamicProperty: function(){
+    dynamicProperty(){
       return '<a href="/' + this.currentLocale.get() + '/info">info</a>';
     }
   },
@@ -45,59 +45,36 @@ i18nConfig = {
     property2: {
       nestedProp: "value"
     },
-    dynamicProperty: function(){
+    dynamicProperty(){
       return '<a href="/' + this.currentLocale.get() + '/info">info</a>';
     }
   }
   ...
 };
 
-this.i18n = new I18N({driver: 'Object', i18n: i18nConfig});
-```
-
-### Mongo-based Files and Folders structure
-```schema
- private/
- └─ i18n/ //--> Driver's dir
-    |
-    ├── en/ //--> Localization folder with name of country two-letter code
-    |   ├── file.json
-    |   └── subFolder/ 
-    |       └── anotherFile.json
-    |
-    ├── de/ //--> Localization folder with name of country two-letter code
-    |   ├── file.json
-    |   └── subFolder/ 
-    |       └── anotherFile.json
-    |
-    └── i18n.json //--> Config file
+import I18N from 'meteor/ostrio:i18n';
+const i18n = new I18N({i18n: i18nConfig});
 ```
 
 Initialization
 ========
-```javascript
-this.i18n = new I18N(config);
-// `this` is used to create application wide variable
+```jsx
+import I18N from 'meteor/ostrio:i18n';
+const i18n = new I18N(config);
 ```
 
-__Configuration object__:
- - `config.driver` {String: *Mongo*|*Object*} - Driver type. Use `Mongo` for file-based and `Object` object-based
  - `config.i18n`               {*Object*}  - [Internalization object](https://github.com/VeliovGroup/Meteor-Internationalization#object-based-structure)
- - `config.path`               {*String*}  - Path to `i18n` folder, default: `/assets/app/i18n` (*which points to:* `private/i18n` *in dev environment*)
  - `config.returnKey`          {*Boolean*} - Return key if l10n value not found, default: `true`
- - `config.collectionName`     {*String*}  - i18n Collection name, default: `internalization`
  - `config.helperName`         {*String*}  - Template helper name, default: `i18n`
  - `config.helperSettingsName` {*String*}  - Settings helper name, default: `i18nSettings`
- - `config.allowPublishAll`    {*Boolean*} - Allow publish full i18n set to client, default: `true`
 
-
-Isomorphic usage
+API
 ========
 ##### `get([locale,] key, [replacements...])`
  - `locale` {*String*} - [Optional] Two-letter locale string, used to force locale, if not set __current locale__ is used
  - `key`    {*String*} - l10n key like: `folder.file.object.key`
  - `replacements..` {*String*|[*String*]|*Object*} - [Optional] Replacements for placeholders in l10n string
-```javascript
+```jsx
 i18n.get('file.obj.key'); // Current locale, no replacements
 
 i18n.get(locale, param); // Force locale, no replacements
@@ -116,7 +93,7 @@ i18n.get('en', 'file.obj.key', 'User Name'); // Hello {{username}} -> Hello User
  - `locale` {*String*} - [Optional] Two-letter locale string, used to force locale, if not set __current locale__ is used
  - `key`    {*String*} - l10n key like: `folder.file.object.key`
 
-```javascript
+```jsx
 i18n.has('file.obj.key'); // Current locale
 i18n.has(locale, param); // Force locale
 i18n.has('ca', 'file.obj.key'); //false
@@ -125,22 +102,22 @@ i18n.has('en', 'file.obj.key'); //true
 
 ##### `setLocale(locale)`
  - `locale` {*String*} - Two-letter locale code
-```javascript
+```jsx
 i18n.setLocale(locale);
 ```
 
 ##### Get current localization at any environment
-```javascript
+```jsx
 i18n.currentLocale.get(); // Reactive on Client
 ```
 
 ##### Get current default locale
-```javascript
+```jsx
 i18n.defaultLocale;
 ```
 
 ##### Get configuration object
-```javascript
+```jsx
 i18n.langugeSet();
 /* Returns:
 {
@@ -171,29 +148,15 @@ i18n.langugeSet();
 
 ##### Get specific key from configuration object
  - `key` {*String*} - One of the keys: `current`, `all`, `other`, `locales`, `currentISO`, `currentName`, `currentPath`
-```javascript
+```jsx
 i18n.getSetting('current'); // en
 ```
 
 Client specific usage
 ================
 ##### Client's browser locale
-```javascript
+```jsx
 i18n.userLocale; // en-US
-```
-
-##### `subscribeToAll(callback)`
- - `callback` {*Function*} - Callback function triggered right after subscription is ready
-Send full i18n and l10n set to client, might be used within `iron-router` and `fastrender` packages, example:
-```javascript
-i18n = new I18N();
-Router.route('index', {
-  path: '/',
-  fastRender: true,
-  waitOn: function() {
-    return i18n.subscribeToAll();
-  }
-});
 ```
 
 Template helpers
@@ -231,15 +194,15 @@ Template helpers
   {{/each}}
 </template>
 ```
-```javascript
+```jsx
 Template.langSwitch.helpers({
-  currentLocale: function(){
+  currentLocale(){
     return i18n.currentLocale.get()
   }
 });
 
 Template.langSwitch.events({
-  'click .switch-language': function(e, template) {
+  'click .switch-language'(e, template) {
     e.preventDefault();
     i18n.setLocale(e.currentTarget.dataset.code);
     return false;
