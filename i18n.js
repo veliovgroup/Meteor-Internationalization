@@ -1,3 +1,8 @@
+import { Meteor } from 'meteor/meteor';
+import { _ } from 'meteor/underscore';
+import { check, Match } from 'meteor/check';
+import { ReactiveVar } from 'meteor/reactive-var';
+import { Template } from 'meteor/templating';
 import { ClientStorage } from 'meteor/ostrio:cstorage';
 
 /*
@@ -26,8 +31,8 @@ const toDottedString = function(obj, prepend = 'i18n') {
 */
 const proceedPlaceholders = function(string, replacements) {
   if (string) {
+    let key;
     for (let replacement of replacements) {
-      let key;
       if (replacement && replacement.hash && _.isObject(replacement.hash)) {
         for (key in replacement.hash) {
           string = string.replace(new RegExp(`\{\{(\s)*(${key})+(\s)*\}\}`, 'ig'), replacement.hash[key]);
@@ -61,19 +66,21 @@ export default class I18N {
     check(config, Object);
 
     let object;
+    let key;
     const self              = this;
     this.returnKey          = config.returnKey || true;
-    this.helperName        = config.helperName || 'i18n';
+    this.helperName         = config.helperName || 'i18n';
     this.helperSettingsName = config.helperSettingsName || 'i18nSettings';
-    this.currentLocale      = new ReactiveVar(undefined);
+    this.currentLocale      = new ReactiveVar(void 0);
 
     check(this.returnKey, Boolean);
     check(this.helperName, String);
     check(this.helperSettingsName, String);
     check(config.i18n, Object);
 
+    this.locales = [];
     this.strings = {};
-    for (let key in config.i18n) {
+    for (key in config.i18n) {
       if (key !== 'settings') {
         object = toDottedString.call(this, config.i18n[key], key);
         for (let k in object) {
@@ -88,13 +95,15 @@ export default class I18N {
       this.defaultLocale = this.settings.defaultLocale;
       this.strings['__settings.__langSet__'] = [];
       this.strings['__settings.__langConfig__'] = [];
-      let object1 = toDottedString.call(this, this.settings, '__settings');
-      for (let key in object1) {
-        this.strings[key] = object1[key];
+      const dotted = toDottedString.call(this, this.settings, '__settings');
+
+      for (key in dotted) {
+        this.strings[key] = dotted[key];
       }
 
-      for (let key in this.settings) {
+      for (key in this.settings) {
         if (this.settings[key] && this.settings[key].code) {
+          this.locales.push(key);
           this.strings['__settings.__langSet__'].push(this.settings[key].code);
           this.strings['__settings.__langConfig__'].push(this.settings[key]);
         }
@@ -118,24 +127,19 @@ export default class I18N {
         return self.getSetting.apply(self, arguments);
       });
 
+      const savedLocale = ClientStorage.get('___i18n.locale___');
       if (!this.currentLocale.get()) {
-        if (!ClientStorage.get('___i18n.locale___')) {
-          for (let lang in this.strings['__settings.__langConfig__']) {
-            if (lang.code === this.userLocale) {
+        if (!savedLocale) {
+          for (let lang of this.strings['__settings.__langConfig__']) {
+            if (lang.code === this.userLocale || lang.isoCode === this.userLocale) {
               this.currentLocale.set(lang.code);
               ClientStorage.set('___i18n.locale___', lang.code);
-            }
-            if (lang.isoCode === this.userLocale) {
-              this.currentLocale.set(lang.isoCode.substring(0, 2));
-              ClientStorage.set('___i18n.locale___', lang.isoCode.substring(0, 2));
+              break;
             }
           }
-
-          this.currentLocale.set(this.defaultLocale);
-          ClientStorage.set('___i18n.locale___', this.defaultLocale);
         } else {
-          if (!!~this.strings['__settings.__langSet__'].indexOf(ClientStorage.get('___i18n.locale___'))) {
-            this.currentLocale.set(ClientStorage.get('___i18n.locale___'));
+          if (!!~this.strings['__settings.__langSet__'].indexOf(savedLocale)) {
+            this.currentLocale.set(savedLocale);
           } else {
             this.currentLocale.set(this.defaultLocale);
             ClientStorage.set('___i18n.locale___', this.defaultLocale);
@@ -146,7 +150,11 @@ export default class I18N {
       this.defaultLocale = this.settings.defaultLocale;
       this.currentLocale.set(this.defaultLocale);
     }
-    if (!this.currentLocale.get()) { this.currentLocale.set(this.defaultLocale); }
+
+    if (!this.currentLocale.get()) {
+      this.currentLocale.set(this.defaultLocale);
+      ClientStorage.set('___i18n.locale___', this.defaultLocale);
+    }
   }
 
   /*
@@ -158,15 +166,16 @@ export default class I18N {
   @param key          {String} - l10n key like: `folder.file.object.key`
   @param replacements... {String|[String]|Object} - [Optional] Replacements for placeholders in l10n string
   */
-  get() {
-    let key, lang, replacements;
-    let args = Array.prototype.slice.call(arguments);
+  get(...args) {
+    let key;
+    let lang;
+    let replacements;
 
     if (!args.length || !args[0] || !_.isString(args[0])) {
       return '';
     }
 
-    if (!~args[0].indexOf('.') && _.isString(args[1])) {
+    if (!!~this.locales.indexOf(args[0])) {
       lang         = args[0];
       key          = args[1];
       replacements = args.slice(2);
@@ -202,15 +211,15 @@ export default class I18N {
   @param locale       {String} - [Optional] Two-letter locale string
   @param key          {String} - l10n key like: `folder.file.object.key`
   */
-  has() {
-    let key, lang;
-    let args = Array.prototype.slice.call(arguments);
+  has(...args) {
+    let key;
+    let lang;
 
     if (!args.length || !args[0]) {
       return '';
     }
 
-    if (!~args[0].indexOf('.') && _.isString(args[1])) {
+    if (!!~this.locales.indexOf(args[0])) {
       lang = args[0];
       key  = args[1];
     } else {
@@ -269,7 +278,8 @@ export default class I18N {
   @summary Get data from i18n config
   */
   langugeSet() {
-    let key, current = this.settings[this.currentLocale.get()];
+    let key;
+    const current = this.settings[this.currentLocale.get()];
     return {
       current: this.currentLocale.get(),
       currentISO: current.isoCode,
