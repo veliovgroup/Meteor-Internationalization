@@ -1,8 +1,8 @@
-import { Meteor } from 'meteor/meteor';
-import { _ } from 'meteor/underscore';
-import { check, Match } from 'meteor/check';
-import { ReactiveVar } from 'meteor/reactive-var';
-import { Template } from 'meteor/templating';
+import { _ }             from 'meteor/underscore';
+import { Meteor }        from 'meteor/meteor';
+import { Template }      from 'meteor/templating';
+import { ReactiveVar }   from 'meteor/reactive-var';
+import { check, Match }  from 'meteor/check';
 import { ClientStorage } from 'meteor/ostrio:cstorage';
 
 /*
