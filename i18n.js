@@ -1,17 +1,16 @@
 import { _ }             from 'meteor/underscore';
 import { Meteor }        from 'meteor/meteor';
-import { Template }      from 'meteor/templating';
 import { ReactiveVar }   from 'meteor/reactive-var';
 import { check, Match }  from 'meteor/check';
 import { ClientStorage } from 'meteor/ostrio:cstorage';
 
 /*
-@private
-@locus Anywhere
-@name toDottedString
-@summary Convert object nested keys into dotted string
-*/
-const toDottedString = function(obj, prepend = 'i18n') {
+ * @private
+ * @locus Anywhere
+ * @name toDottedString
+ * @summary Convert object nested keys into dotted string
+ */
+const toDottedString = function (obj, prepend = 'i18n') {
   let final = {};
   for (let key in obj) {
     if (_.isFunction(obj[key]) || _.isString(obj[key])) {
@@ -24,12 +23,12 @@ const toDottedString = function(obj, prepend = 'i18n') {
 };
 
 /*
-@private
-@locus Anywhere
-@name proceedPlaceholders
-@summary Replace placeholders with replacements in l10n strings
-*/
-const proceedPlaceholders = function(string, replacements) {
+ * @private
+ * @locus Anywhere
+ * @name proceedPlaceholders
+ * @summary Replace placeholders with replacements in l10n strings
+ */
+const proceedPlaceholders = function (string, replacements) {
   if (string) {
     let key;
     for (let replacement of replacements) {
@@ -52,20 +51,19 @@ const proceedPlaceholders = function(string, replacements) {
 
 export default class I18N {
   /*
-  @locus Anywhere
-  @name I18N
-  @constructor
-  @summary Initialize I18N object with `config`
-  @param config                    {Object}
-  @param config.i18n               {Object}  - Internalization object
-  @param config.returnKey          {Boolean} - Return key if l10n value not found
-  @param config.helperName        {String}  - Template main i18n helper name
-  @param config.helperSettingsName {String}  - Template i18nSettings helper name
-  */
+   * @locus Anywhere
+   * @name I18N
+   * @constructor
+   * @summary Initialize I18N object with `config`
+   * @param config                    {Object}
+   * @param config.i18n               {Object}  - Internalization object
+   * @param config.returnKey          {Boolean} - Return key if l10n value not found
+   * @param config.helperName         {String}  - Template main i18n helper name
+   * @param config.helperSettingsName {String}  - Template i18nSettings helper name
+   */
   constructor(config = {}) {
     check(config, Object);
 
-    let object;
     let key;
     const self              = this;
     this.returnKey          = config.returnKey || true;
@@ -80,19 +78,14 @@ export default class I18N {
 
     this.locales = [];
     this.strings = {};
-    for (key in config.i18n) {
-      if (key !== 'settings') {
-        object = toDottedString.call(this, config.i18n[key], key);
-        for (let k in object) {
-          this.strings[k] = object[k];
-        }
-      }
-    }
+
+    this.addl10n(config.i18n);
 
     if (_.isObject(config.i18n)) {
       check(config.i18n.settings, Object);
       this.settings = config.i18n.settings;
       this.defaultLocale = this.settings.defaultLocale;
+      check(this.defaultLocale, String);
       this.strings['__settings.__langSet__'] = [];
       this.strings['__settings.__langConfig__'] = [];
       const dotted = toDottedString.call(this, this.settings, '__settings');
@@ -113,19 +106,21 @@ export default class I18N {
     this.userLocale = ((Meteor.isClient) ? window.navigator.userLanguage || window.navigator.language || navigator.userLanguage : this.settings.defaultLocale);
 
     if (Meteor.isClient) {
-      /*
-      @summary Main `i18n` template helper
-      */
-      Template.registerHelper(this.helperName, function () {
-        return self.get.apply(self, arguments);
-      });
+      if (typeof Template !== 'undefined' && Template !== null) {
+        /*
+         * @summary Main `i18n` template helper
+         */
+        Template.registerHelper(this.helperName, function () {
+          return self.get.apply(self, arguments);
+        });
 
-      /*
-      @summary Settings `i18n` template helper, might be used to build language switcher (see demo folder).
-      */
-      Template.registerHelper(this.helperSettingsName, function () {
-        return self.getSetting.apply(self, arguments);
-      });
+        /*
+         * @summary Settings `i18n` template helper, might be used to build language switcher (see demo folder).
+         */
+        Template.registerHelper(this.helperSettingsName, function () {
+          return self.getSetting.apply(self, arguments);
+        });
+      }
 
       const savedLocale = ClientStorage.get('___i18n.locale___');
       if (!this.currentLocale.get()) {
@@ -158,14 +153,14 @@ export default class I18N {
   }
 
   /*
-  @locus Anywhere
-  @memberOf I18N
-  @name get
-  @summary Get l10n value by key
-  @param locale       {String} - [Optional] Two-letter locale string
-  @param key          {String} - l10n key like: `folder.file.object.key`
-  @param replacements... {String|[String]|Object} - [Optional] Replacements for placeholders in l10n string
-  */
+   * @locus Anywhere
+   * @memberOf I18N
+   * @name get
+   * @summary Get l10n value by key
+   * @param locale       {String} - [Optional] Two-letter locale string
+   * @param key          {String} - l10n key like: `folder.file.object.key`
+   * @param replacements... {String|[String]|Object} - [Optional] Replacements for placeholders in l10n string
+   */
   get(...args) {
     let key;
     let lang;
@@ -204,13 +199,13 @@ export default class I18N {
   }
 
   /*
-  @locus Anywhere
-  @memberOf I18N
-  @name has
-  @summary Check if key exists in current locale
-  @param locale       {String} - [Optional] Two-letter locale string
-  @param key          {String} - l10n key like: `folder.file.object.key`
-  */
+   * @locus Anywhere
+   * @memberOf I18N
+   * @name has
+   * @summary Check if key exists in current locale
+   * @param locale       {String} - [Optional] Two-letter locale string
+   * @param key          {String} - l10n key like: `folder.file.object.key`
+   */
   has(...args) {
     let key;
     let lang;
@@ -236,12 +231,12 @@ export default class I18N {
   }
 
   /*
-  @locus Anywhere
-  @memberOf I18N
-  @name setLocale
-  @summary Set another locale
-  @param locale {String} - Two-letter locale string
-  */
+   * @locus Anywhere
+   * @memberOf I18N
+   * @name setLocale
+   * @summary Set another locale
+   * @param locale {String} - Two-letter locale string
+   */
   setLocale(locale) {
     check(locale, String);
 
@@ -257,12 +252,12 @@ export default class I18N {
   }
 
   /*
-  @locus Anywhere
-  @memberOf I18N
-  @name getSetting
-  @summary Get parsed data by key from i18n.json file
-  @param key {String} - One of the keys: 'current', 'all', 'other', 'locales'
-  */
+   * @locus Anywhere
+   * @memberOf I18N
+   * @name getSetting
+   * @summary Get parsed data by key from i18n.json file
+   * @param key {String} - One of the keys: 'current', 'all', 'other', 'locales'
+   */
   getSetting(key) {
     check(key, Match.Optional(Match.OneOf('current', 'all', 'other', 'locales', 'currentISO', 'currentName')));
     if (key) {
@@ -272,18 +267,18 @@ export default class I18N {
   }
 
   /*
-  @locus Anywhere
-  @memberOf I18N
-  @name langugeSet
-  @summary Get data from i18n config
-  */
+   * @locus Anywhere
+   * @memberOf I18N
+   * @name langugeSet
+   * @summary Get data from i18n config
+   */
   langugeSet() {
     let key;
-    const current = this.settings[this.currentLocale.get()];
+    const locale  = this.currentLocale.get();
     return {
-      current: this.currentLocale.get(),
-      currentISO: current.isoCode,
-      currentName: current.name,
+      current: locale,
+      currentISO: this.settings[locale].isoCode,
+      currentName: this.settings[locale].name,
       all: (() => {
         const result = [];
         for (key in this.settings) {
@@ -296,7 +291,7 @@ export default class I18N {
       other: (() => {
         const result = [];
         for (key in this.settings) {
-          if (_.isObject(this.settings[key]) && (key !== this.currentLocale.get())) {
+          if (_.isObject(this.settings[key]) && (key !== locale)) {
             result.push(this.settings[key]);
           }
         }
@@ -312,5 +307,28 @@ export default class I18N {
         return result;
       })()
     };
+  }
+
+  /*
+   * @locus Anywhere
+   * @memberOf I18N
+   * @name addl10n
+   * @summary add l10n data
+   * @example { en: { newKey: "new data" } }
+   */
+  addl10n(l10n) {
+    check(l10n, Object);
+
+    let k;
+    let key;
+    let object;
+    for (key in l10n) {
+      if (key !== 'settings') {
+        object = toDottedString.call(this, l10n[key], key);
+        for (k in object) {
+          this.strings[k] = object[k];
+        }
+      }
+    }
   }
 }
