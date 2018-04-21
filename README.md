@@ -1,6 +1,6 @@
 Reactive i18n and l10n isomorphic driver
 ========
-Object based, fast, lightweight (*306 lines with comments*) and reactive internationalization isomorphic driver for Meteor with support of placeholders, and user's locale auto-detection.
+Object based, fast, lightweight (*334 lines with comments*) and reactive internationalization isomorphic driver for Meteor with support of placeholders, and user's locale auto-detection.
 
 Not tied to Blaze, can be used with Vue.js, React.js or any other JS solution.
 
