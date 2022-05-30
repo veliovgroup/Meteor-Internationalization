@@ -1,22 +1,29 @@
-Reactive i18n and l10n isomorphic driver
-========
+[![support](https://img.shields.io/badge/support-GitHub-white)](https://github.com/sponsors/dr-dimitru)
+[![support](https://img.shields.io/badge/support-PayPal-white)](https://paypal.me/veliovgroup)
+<a href="https://ostr.io/info/built-by-developers-for-developers">
+  <img src="https://ostr.io/apple-touch-icon-60x60.png" height="20">
+</a>
+
+# Reactive i18n and l10n isomorphic driver
+
 Object based, fast, lightweight (*334 lines with comments*) and reactive internationalization isomorphic driver for Meteor with support of placeholders, and user's locale auto-detection.
 
 Not tied to Blaze, can be used with Vue.js, React.js or any other JS solution.
 
-Install:
-========
+## Install:
+
 ```shell
 meteor add ostrio:i18n
 ```
 
-Import:
-========
+## Import:
+
 ```js
 import I18N from 'meteor/ostrio:i18n';
 ```
 
 ### Object-based structure
+
 ```js
 /* Isomorphic (Both Server and Client) */
 const i18nConfig = {
@@ -58,24 +65,26 @@ import I18N from 'meteor/ostrio:i18n';
 const i18n = new I18N({i18n: i18nConfig});
 ```
 
-Initialization
-========
+## Initialization
+
 ```js
 import I18N from 'meteor/ostrio:i18n';
 const i18n = new I18N(config);
 ```
 
- - `config.i18n`               {*Object*}  - [Internalization object](https://github.com/VeliovGroup/Meteor-Internationalization#object-based-structure)
- - `config.returnKey`          {*Boolean*} - Return key if l10n value not found, default: `true`
- - `config.helperName`         {*String*}  - Template helper name, default: `i18n`
- - `config.helperSettingsName` {*String*}  - Settings helper name, default: `i18nSettings`
+- `config.i18n`               {*Object*}  - [Internalization object](https://github.com/VeliovGroup/Meteor-Internationalization#object-based-structure)
+- `config.returnKey`          {*Boolean*} - Return key if l10n value not found, default: `true`
+- `config.helperName`         {*String*}  - Template helper name, default: `i18n`
+- `config.helperSettingsName` {*String*}  - Settings helper name, default: `i18nSettings`
 
-API
-========
-##### `get([locale,] key, [replacements...])`
- - `locale` {*String*} - [Optional] Two-letter locale string, used to force locale, if not set __current locale__ is used
- - `key`    {*String*} - l10n key like: `folder.file.object.key`
- - `replacements..` {*String*|[*String*]|*Object*} - [Optional] Replacements for placeholders in l10n string
+## API
+
+### `get([locale,] key, [replacements...])`
+
+- `locale` {*String*} - [Optional] Two-letter locale string, used to force locale, if not set __current locale__ is used
+- `key` {*String*} - l10n key like: `folder.file.object.key`
+- `replacements..` {*String*|[*String*]|*Object*} - [Optional] Replacements for placeholders in l10n string
+
 ```js
 i18n.get('file.obj.key'); // Current locale, no replacements
 
@@ -89,11 +98,12 @@ i18n.get(locale, param, replacements); // Force locale, with replacements
 i18n.get('en', 'file.obj.key', 'User Name'); // Hello {{username}} -> Hello User Name
 ```
 
-##### `has([locale,] key)`
+### `has([locale,] key)`
+
 *Determine whenever key is exists in configuration file(s).*
 
- - `locale` {*String*} - [Optional] Two-letter locale string, used to force locale, if not set __current locale__ is used
- - `key`    {*String*} - l10n key like: `folder.file.object.key`
+- `locale` {*String*} - [Optional] Two-letter locale string, used to force locale, if not set __current locale__ is used
+- `key`    {*String*} - l10n key like: `folder.file.object.key`
 
 ```js
 i18n.has('file.obj.key'); // Current locale
@@ -102,14 +112,18 @@ i18n.has('ca', 'file.obj.key'); //false
 i18n.has('en', 'file.obj.key'); //true
 ```
 
-##### `setLocale(locale)`
- - `locale` {*String*} - Two-letter locale code
+### `setLocale(locale)`
+
+- `locale` {*String*} - Two-letter locale code
+
 ```js
 i18n.setLocale(locale);
 ```
 
-##### `addl10n(l10n)`
- - `l10n` {*Object*} - Object with language set
+### `addl10n(l10n)`
+
+- `l10n` {*Object*} - Object with language set
+
 ```js
 i18n.addl10n({
   en: { // <- Object's root is the language two-letter code
@@ -118,17 +132,20 @@ i18n.addl10n({
 });
 ```
 
-##### Get current localization at any environment
+### Get current localization at any environment
+
 ```js
 i18n.currentLocale.get(); // Reactive on Client
 ```
 
-##### Get current default locale
+### Get current default locale
+
 ```js
 i18n.defaultLocale;
 ```
 
-##### Get configuration object
+### Get configuration object
+
 ```js
 i18n.langugeSet();
 /* Returns:
@@ -158,25 +175,28 @@ i18n.langugeSet();
 */
 ```
 
-##### Get specific key from configuration object
- - `key` {*String*} - One of the keys: `current`, `all`, `other`, `locales`, `currentISO`, `currentName`, `currentPath`
+### Get specific key from configuration object
+
+- `key` {*String*} - One of the keys: `current`, `all`, `other`, `locales`, `currentISO`, `currentName`, `currentPath`
+
 ```js
 i18n.getSetting('current'); // en
 ```
 
-Client specific usage
-================
-##### Client's browser locale
+### Blaze specific usage
+
+Usage in Blaze templating
+
+#### Client's browser locale
+
 ```js
 i18n.userLocale; // en-US
 ```
 
-Template helpers
-================
-__Template helpers requires__ `templating` __package to be installed__.
+#### Template helpers
 
-`i18n` helper - accepts `locale`, `key` and `replacements`:
-*You may change name of the helper via config object: `config.helperName`*
+__Template helpers requires__ `templating` __package to be installed__. `i18n` helper - accepts `locale`, `key` and `replacements`
+
 ```handlebars
 <p>{{i18n 'sample.hello'}}</p>
 <p>{{{i18n 'sample.html'}}}</p>
@@ -188,15 +208,20 @@ __Template helpers requires__ `templating` __package to be installed__.
 <p>{{i18n 'sample.fullName' first='Michael' middle='A.' third='Macht'}}</p>
 ```
 
+*Change name of the helper via config object: `config.helperName`*
+
 `i18nSettings` - accepts configuration object key, one of `current`, `all`, `other`, `locales`
-*You may change name of the helper via config object: `config.helperSettingsName`*
+
 ```handlebars
 {{#each i18nSettings 'all'}}
   ...
 {{/each}}
 ```
 
-##### Template language switcher example
+*Change name of the helper via config object: `config.helperSettingsName`*
+
+#### Template language switcher example
+
 ```handlebars
 <template name="langSwitch">
   {{#each i18nSettings 'all'}}
@@ -208,6 +233,7 @@ __Template helpers requires__ `templating` __package to be installed__.
   {{/each}}
 </template>
 ```
+
 ```js
 Template.langSwitch.helpers({
   currentLocale(){
@@ -226,9 +252,8 @@ Template.langSwitch.events({
 
 Template helpers `compare`, `==`, `Session` and many more comes from: [`ostrio:templatehelpers`](https://atmospherejs.com/ostrio/templatehelpers) package.
 
+## Support this project:
 
-Support this project:
-========
-This project wouldn't be possible without [ostr.io](https://ostr.io).
-
-Using [ostr.io](https://ostr.io) you are not only [protecting domain names](https://ostr.io/info/domain-names-protection), [monitoring websites and servers](https://ostr.io/info/monitoring), using [Prerendering for better SEO](https://ostr.io/info/prerendering) of your JavaScript website, but support our Open Source activity, and great packages like this one could be available for free.
+- [Sponsor via GitHub](https://github.com/sponsors/dr-dimitru)
+- [Support via PayPal](https://paypal.me/veliovgroup)
+- Use [ostr.io](https://ostr.io) — [Monitoring](https://snmp-monitoring.com), [Analytics](https://ostr.io/info/web-analytics), [WebSec](https://domain-protection.info), [Web-CRON](https://web-cron.info) and [Pre-rendering](https://prerendering.com) for a website
