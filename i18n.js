@@ -4,7 +4,7 @@ import { ReactiveVar }   from 'meteor/reactive-var';
 import { check, Match }  from 'meteor/check';
 import { ClientStorage } from 'meteor/ostrio:cstorage';
 
-/*
+/**
  * @private
  * @locus Anywhere
  * @name toDottedString
@@ -22,7 +22,7 @@ const toDottedString = function (obj, prepend = 'i18n') {
   return final;
 };
 
-/*
+/**
  * @private
  * @locus Anywhere
  * @name proceedPlaceholders
@@ -50,7 +50,7 @@ const proceedPlaceholders = function (string, replacements) {
 };
 
 export default class I18N {
-  /*
+  /**
    * @locus Anywhere
    * @name I18N
    * @constructor
@@ -107,14 +107,14 @@ export default class I18N {
 
     if (Meteor.isClient) {
       if (typeof Template !== 'undefined' && Template !== null) {
-        /*
+        /**
          * @summary Main `i18n` template helper
          */
         Template.registerHelper(this.helperName, function () {
           return self.get.apply(self, arguments);
         });
 
-        /*
+        /**
          * @summary Settings `i18n` template helper, might be used to build language switcher (see demo folder).
          */
         Template.registerHelper(this.helperSettingsName, function () {
@@ -152,7 +152,7 @@ export default class I18N {
     }
   }
 
-  /*
+  /**
    * @locus Anywhere
    * @memberOf I18N
    * @name get
@@ -198,7 +198,7 @@ export default class I18N {
     return (this.returnKey) ? key : '';
   }
 
-  /*
+  /**
    * @locus Anywhere
    * @memberOf I18N
    * @name has
@@ -230,7 +230,7 @@ export default class I18N {
     return false;
   }
 
-  /*
+  /**
    * @locus Anywhere
    * @memberOf I18N
    * @name setLocale
@@ -251,7 +251,7 @@ export default class I18N {
     return this;
   }
 
-  /*
+  /**
    * @locus Anywhere
    * @memberOf I18N
    * @name getSetting
@@ -266,7 +266,7 @@ export default class I18N {
     return this.langugeSet();
   }
 
-  /*
+  /**
    * @locus Anywhere
    * @memberOf I18N
    * @name langugeSet
@@ -274,7 +274,7 @@ export default class I18N {
    */
   langugeSet() {
     let key;
-    const locale  = this.currentLocale.get();
+    const locale = this.currentLocale.get();
     return {
       current: locale,
       currentISO: this.settings[locale].isoCode,
@@ -309,7 +309,7 @@ export default class I18N {
     };
   }
 
-  /*
+  /**
    * @locus Anywhere
    * @memberOf I18N
    * @name addl10n
