@@ -72,9 +72,9 @@ import I18N from 'meteor/ostrio:i18n';
 const i18n = new I18N(config);
 ```
 
-- `config.i18n`               {*Object*}  - [Internalization object](https://github.com/VeliovGroup/Meteor-Internationalization#object-based-structure)
-- `config.returnKey`          {*Boolean*} - Return key if l10n value not found, default: `true`
-- `config.helperName`         {*String*}  - Template helper name, default: `i18n`
+- `config.i18n` {*Object*}  - [Internalization object](https://github.com/VeliovGroup/Meteor-Internationalization#object-based-structure)
+- `config.returnKey` {*Boolean*} - Return key if l10n value not found, default: `true`
+- `config.helperName` {*String*}  - Template helper name, default: `i18n`
 - `config.helperSettingsName` {*String*}  - Settings helper name, default: `i18nSettings`
 
 ## API
@@ -82,20 +82,20 @@ const i18n = new I18N(config);
 ### `get([locale,] key, [replacements...])`
 
 - `locale` {*String*} - [Optional] Two-letter locale string, used to force locale, if not set __current locale__ is used
-- `key` {*String*} - l10n key like: `folder.file.object.key`
+- `key` {*String*} - l10n key like: `object.path.to.key`
 - `replacements..` {*String*|[*String*]|*Object*} - [Optional] Replacements for placeholders in l10n string
 
 ```js
-i18n.get('file.obj.key'); // Current locale, no replacements
+i18n.get('object.path.to.key'); // Current locale, no replacements
 
 i18n.get(locale, param); // Force locale, no replacements
-i18n.get('en', 'file.obj.key');
+i18n.get('en', 'object.path.to.key');
 
 i18n.get(param, replacements); // Current locale, with replacements
-i18n.get('file.obj.key', 'User Name'); // Hello {{username}} -> Hello User Name
+i18n.get('object.path.to.key', 'Michael'); // Hello {{username}} -> Hello Michael
 
 i18n.get(locale, param, replacements); // Force locale, with replacements
-i18n.get('en', 'file.obj.key', 'User Name'); // Hello {{username}} -> Hello User Name
+i18n.get('en', 'object.path.to.key', 'John Doe'); // Hello {{username}} -> Hello John Doe
 ```
 
 ### `has([locale,] key)`
@@ -103,13 +103,13 @@ i18n.get('en', 'file.obj.key', 'User Name'); // Hello {{username}} -> Hello User
 *Determine whenever key is exists in configuration file(s).*
 
 - `locale` {*String*} - [Optional] Two-letter locale string, used to force locale, if not set __current locale__ is used
-- `key`    {*String*} - l10n key like: `folder.file.object.key`
+- `key` {*String*} - l10n key like: `object.path.to.key`
 
 ```js
-i18n.has('file.obj.key'); // Current locale
+i18n.has('object.path.to.key'); // Current locale
 i18n.has(locale, param); // Force locale
-i18n.has('ca', 'file.obj.key'); //false
-i18n.has('en', 'file.obj.key'); //true
+i18n.has('ca', 'object.path.to.key'); //false
+i18n.has('en', 'object.path.to.key'); //true
 ```
 
 ### `setLocale(locale)`

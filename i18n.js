@@ -1,8 +1,16 @@
-import { _ }             from 'meteor/underscore';
-import { Meteor }        from 'meteor/meteor';
-import { ReactiveVar }   from 'meteor/reactive-var';
-import { check, Match }  from 'meteor/check';
+import { Meteor } from 'meteor/meteor';
+import { ReactiveVar } from 'meteor/reactive-var';
+import { check, Match } from 'meteor/check';
 import { ClientStorage } from 'meteor/ostrio:cstorage';
+
+const clientStorage = new ClientStorage();
+const isObject = (obj) => {
+  if (!obj) {
+    return false;
+  }
+
+  return Object.prototype.toString.call(obj) === '[object Object]';
+};
 
 /**
  * @private
@@ -13,10 +21,10 @@ import { ClientStorage } from 'meteor/ostrio:cstorage';
 const toDottedString = function (obj, prepend = 'i18n') {
   let final = {};
   for (let key in obj) {
-    if (_.isFunction(obj[key]) || _.isString(obj[key])) {
-      final[prepend + '.' + key] = obj[key];
+    if (typeof obj[key] === 'function' || typeof obj[key] === 'string') {
+      final[`${prepend}.${key}`] = obj[key];
     } else {
-      final = _.extend(final, toDottedString.call(this, obj[key], prepend + '.' + key));
+      final = Object.assign({}, final, toDottedString.call(this, obj[key], `${prepend}.${key}`));
     }
   }
   return final;
@@ -32,15 +40,19 @@ const proceedPlaceholders = function (string, replacements) {
   if (string) {
     let key;
     for (let replacement of replacements) {
-      if (replacement && replacement.hash && _.isObject(replacement.hash)) {
+      if (replacement && replacement.hash && isObject(replacement.hash)) {
         for (key in replacement.hash) {
-          string = string.replace(new RegExp(`\{\{(\s)*(${key})+(\s)*\}\}`, 'ig'), replacement.hash[key]);
+          if (typeof replacement.hash[key] === 'string') {
+            string = string.replace(new RegExp(`\{\{(\s)*(${key})+(\s)*\}\}`, 'ig'), replacement.hash[key]);
+          }
         }
-      } else if (_.isObject(replacement)) {
+      } else if (isObject(replacement)) {
         for (key in replacement) {
-          string = string.replace(new RegExp(`\{\{(\s)*(${key})+(\s)*\}\}`, 'ig'), replacement[key]);
+          if (typeof replacement[key] === 'string') {
+            string = string.replace(new RegExp(`\{\{(\s)*(${key})+(\s)*\}\}`, 'ig'), replacement[key]);
+          }
         }
-      } else {
+      } else if (typeof replacement === 'string') {
         string = string.replace(/\{\{(\s)*([A-z])+(\s)*\}\}/i, replacement);
       }
     }
@@ -65,11 +77,11 @@ export default class I18N {
     check(config, Object);
 
     let key;
-    const self              = this;
-    this.returnKey          = config.returnKey || true;
-    this.helperName         = config.helperName || 'i18n';
+    const self = this;
+    this.returnKey = config.returnKey || true;
+    this.helperName = config.helperName || 'i18n';
+    this.currentLocale = new ReactiveVar(void 0);
     this.helperSettingsName = config.helperSettingsName || 'i18nSettings';
-    this.currentLocale      = new ReactiveVar(void 0);
 
     check(this.returnKey, Boolean);
     check(this.helperName, String);
@@ -81,7 +93,7 @@ export default class I18N {
 
     this.addl10n(config.i18n);
 
-    if (_.isObject(config.i18n)) {
+    if (isObject(config.i18n)) {
       check(config.i18n.settings, Object);
       this.settings = config.i18n.settings;
       this.defaultLocale = this.settings.defaultLocale;
@@ -91,11 +103,13 @@ export default class I18N {
       const dotted = toDottedString.call(this, this.settings, '__settings');
 
       for (key in dotted) {
-        this.strings[key] = dotted[key];
+        if (typeof dotted[key] === 'string') {
+          this.strings[key] = dotted[key];
+        }
       }
 
       for (key in this.settings) {
-        if (this.settings[key] && this.settings[key].code) {
+        if (this.settings[key]?.code) {
           this.locales.push(key);
           this.strings['__settings.__langSet__'].push(this.settings[key].code);
           this.strings['__settings.__langConfig__'].push(this.settings[key]);
@@ -122,22 +136,22 @@ export default class I18N {
         });
       }
 
-      const savedLocale = ClientStorage.get('___i18n.locale___');
+      const savedLocale = clientStorage.get('___i18n.locale___');
       if (!this.currentLocale.get()) {
         if (!savedLocale) {
           for (let lang of this.strings['__settings.__langConfig__']) {
             if (lang.code === this.userLocale || lang.isoCode === this.userLocale) {
               this.currentLocale.set(lang.code);
-              ClientStorage.set('___i18n.locale___', lang.code);
+              clientStorage.set('___i18n.locale___', lang.code);
               break;
             }
           }
         } else {
-          if (!!~this.strings['__settings.__langSet__'].indexOf(savedLocale)) {
+          if (this.strings['__settings.__langSet__'].includes(savedLocale)) {
             this.currentLocale.set(savedLocale);
           } else {
             this.currentLocale.set(this.defaultLocale);
-            ClientStorage.set('___i18n.locale___', this.defaultLocale);
+            clientStorage.set('___i18n.locale___', this.defaultLocale);
           }
         }
       }
@@ -148,7 +162,7 @@ export default class I18N {
 
     if (!this.currentLocale.get()) {
       this.currentLocale.set(this.defaultLocale);
-      ClientStorage.set('___i18n.locale___', this.defaultLocale);
+      clientStorage.set('___i18n.locale___', this.defaultLocale);
     }
   }
 
@@ -166,36 +180,36 @@ export default class I18N {
     let lang;
     let replacements;
 
-    if (!args.length || !args[0] || !_.isString(args[0])) {
+    if (!args.length || !args[0] || typeof args[0] !== 'string') {
       return '';
     }
 
     if (!!~this.locales.indexOf(args[0])) {
-      lang         = args[0];
-      key          = args[1];
+      lang = args[0];
+      key = args[1];
       replacements = args.slice(2);
     } else {
-      lang         = this.currentLocale.get() || this.defaultLocale || 'en';
-      key          = args[0];
+      lang = this.currentLocale.get() || this.defaultLocale || 'en';
+      key = args[0];
       replacements = args.slice(1);
     }
 
     if (lang) {
-      const _key = lang + '.' + key;
+      const _key = `${lang}.${key}`;
       let result = (this.strings && this.strings[_key] ? this.strings[_key] : undefined) || (this.returnKey ? _key : '');
 
-      if (_.isFunction(result)) {
+      if (typeof result === 'function') {
         result = result.call(this);
       }
 
-      if ((result !== _key) && result && result.length && Object.keys((replacements[0] && replacements[0].hash ? replacements[0].hash : undefined) || replacements).length) {
+      if ((result !== _key) && result && result.length && Object.keys(replacements?.[0]?.hash || replacements).length) {
         result = proceedPlaceholders(result, replacements);
       }
 
       return result;
     }
 
-    return (this.returnKey) ? key : '';
+    return this.returnKey ? key : '';
   }
 
   /**
@@ -214,17 +228,17 @@ export default class I18N {
       return '';
     }
 
-    if (!!~this.locales.indexOf(args[0])) {
+    if (this.locales.includes(args[0])) {
       lang = args[0];
-      key  = args[1];
+      key = args[1];
     } else {
       lang = this.currentLocale.get() || this.defaultLocale || 'en';
-      key  = args[0];
+      key = args[0];
     }
 
     if (lang) {
-      key = lang + '.' + key;
-      return !!(this.strings && this.strings[key] ? this.strings[key] : undefined);
+      key = `${lang}.${key}`;
+      return !!(this.strings?.[key] ? this.strings[key] : undefined);
     }
 
     return false;
@@ -243,7 +257,7 @@ export default class I18N {
     if (this.settings && this.settings[locale]) {
       this.currentLocale.set(locale);
       if (Meteor.isClient) {
-        ClientStorage.set('___i18n.locale___', locale);
+        clientStorage.set('___i18n.locale___', locale);
       }
     } else {
       throw new Meteor.Error(404, `No such locale: \"${locale}\"`);
@@ -282,7 +296,7 @@ export default class I18N {
       all: (() => {
         const result = [];
         for (key in this.settings) {
-          if (_.isObject(this.settings[key])) {
+          if (isObject(this.settings[key])) {
             result.push(this.settings[key]);
           }
         }
@@ -291,7 +305,7 @@ export default class I18N {
       other: (() => {
         const result = [];
         for (key in this.settings) {
-          if (_.isObject(this.settings[key]) && (key !== locale)) {
+          if (isObject(this.settings[key]) && (key !== locale)) {
             result.push(this.settings[key]);
           }
         }
@@ -300,7 +314,7 @@ export default class I18N {
       locales: (() => {
         const result = [];
         for (key in this.settings) {
-          if (_.isObject(this.settings[key])) {
+          if (isObject(this.settings[key])) {
             result.push(this.settings[key].code);
           }
         }
@@ -326,7 +340,9 @@ export default class I18N {
       if (key !== 'settings') {
         object = toDottedString.call(this, l10n[key], key);
         for (k in object) {
-          this.strings[k] = object[k];
+          if (typeof object[k] === 'string') {
+            this.strings[k] = object[k];
+          }
         }
       }
     }
