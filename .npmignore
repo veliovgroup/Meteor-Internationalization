@@ -1,0 +1,12 @@
+.npm
+.github
+.meteor
+.DS_Store
+.versions
+.eslintcache
+node_modules
+npm-debug.log*
+
+package.js
+cover.pxd
+cover.pbg
