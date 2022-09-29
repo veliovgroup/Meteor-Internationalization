@@ -88,8 +88,8 @@ export default class I18N {
       : config.helperSettingsName || 'i18nSettings';
 
     check(this.returnKey, Boolean);
-    check(this.helperName, String);
-    check(this.helperSettingsName, String);
+    check(this.helperName, Match.OneOf(String, null));
+    check(this.helperSettingsName, Match.OneOf(String, null));
     check(config.i18n, Object);
 
     this.locales = [];
