@@ -37,29 +37,31 @@ const toDottedString = function (obj, prepend = false) {
   return final;
 };
 
+const _allowedDataTypes = ['string', 'number'];
 /**
  * @private
  * @locus Anywhere
  * @name proceedPlaceholders
  * @summary Replace placeholders with replacements in l10n strings
  */
-const proceedPlaceholders = function (string, replacements) {
+const proceedPlaceholders = function (_string, replacements) {
+  let string = _string;
   if (string) {
     let key;
     for (let replacement of replacements) {
       if (replacement && replacement.hash && isObject(replacement.hash)) {
         for (key in replacement.hash) {
-          if (typeof replacement.hash[key] === 'string') {
+          if (_allowedDataTypes.includes(typeof replacement.hash[key])) {
             string = string.replace(new RegExp(`\{\{(\s)*(${key})+(\s)*\}\}`, 'ig'), replacement.hash[key]);
           }
         }
       } else if (isObject(replacement)) {
         for (key in replacement) {
-          if (typeof replacement[key] === 'string') {
+          if (_allowedDataTypes.includes(typeof replacement[key])) {
             string = string.replace(new RegExp(`\{\{(\s)*(${key})+(\s)*\}\}`, 'ig'), replacement[key]);
           }
         }
-      } else if (typeof replacement === 'string') {
+      } else if (_allowedDataTypes.includes(typeof replacement)) {
         string = string.replace(/\{\{(\s)*([A-z])+(\s)*\}\}/i, replacement);
       }
     }
