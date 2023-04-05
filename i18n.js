@@ -18,13 +18,20 @@ const isObject = (obj) => {
  * @name toDottedString
  * @summary Convert object nested keys into dotted string
  */
-const toDottedString = function (obj, prepend = 'i18n') {
+const toDottedString = function (obj, prepend = false) {
   let final = {};
+  let newKey = '';
   for (let key in obj) {
-    if (typeof obj[key] === 'function' || typeof obj[key] === 'string') {
-      final[`${prepend}.${key}`] = obj[key];
+    if (prepend) {
+      newKey = `${prepend}.${key}`;
     } else {
-      final = Object.assign({}, final, toDottedString.call(this, obj[key], `${prepend}.${key}`));
+      newKey = key;
+    }
+
+    if (typeof obj[key] === 'function' || typeof obj[key] === 'string') {
+      final[newKey] = obj[key];
+    } else {
+      final = Object.assign({}, final, toDottedString.call(this, obj[key], newKey));
     }
   }
   return final;
