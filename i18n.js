@@ -79,13 +79,17 @@ export default class I18N {
     let key;
     const self = this;
     this.returnKey = config.returnKey || true;
-    this.helperName = config.helperName || 'i18n';
+    this.helperName = config.helperName === null
+        ? null
+        : config.helperName || 'i18n';
     this.currentLocale = new ReactiveVar(void 0);
-    this.helperSettingsName = config.helperSettingsName || 'i18nSettings';
+    this.helperSettingsName = config.helperSettingsName === null
+      ? null
+      : config.helperSettingsName || 'i18nSettings';
 
     check(this.returnKey, Boolean);
-    check(this.helperName, String);
-    check(this.helperSettingsName, String);
+    check(this.helperName, Match.OneOf(String, null));
+    check(this.helperSettingsName, Match.OneOf(String, null));
     check(config.i18n, Object);
 
     this.locales = [];
@@ -121,19 +125,23 @@ export default class I18N {
 
     if (Meteor.isClient) {
       if (typeof Template !== 'undefined' && Template !== null) {
-        /**
-         * @summary Main `i18n` template helper
-         */
-        Template.registerHelper(this.helperName, function () {
-          return self.get.apply(self, arguments);
-        });
+        if (this.helperName !== null) {
+          /**
+           * @summary Main `i18n` template helper
+           */
+          Template.registerHelper(this.helperName, function () {
+            return self.get.apply(self, arguments);
+          });
+        }
 
-        /**
-         * @summary Settings `i18n` template helper, might be used to build language switcher (see demo folder).
-         */
-        Template.registerHelper(this.helperSettingsName, function () {
-          return self.getSetting.apply(self, arguments);
-        });
+        if (this.helperSettingsName !== null) {
+          /**
+           * @summary Settings `i18n` template helper, might be used to build language switcher (see demo folder).
+           */
+          Template.registerHelper(this.helperSettingsName, function () {
+            return self.getSetting.apply(self, arguments);
+          });
+        }
       }
 
       const savedLocale = clientStorage.get('___i18n.locale___');
